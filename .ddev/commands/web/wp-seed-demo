@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd /var/www/html
+
+if ! wp core is-installed >/dev/null 2>&1; then
+  echo "WordPress no esta instalado. Ejecuta primero: ddev wp-bootstrap"
+  exit 1
+fi
+
+wp eval '
+if ( ! function_exists("liga_seed_demo_data") ) {
+  WP_CLI::error("No existe liga_seed_demo_data(). Verifica que el tema este activo.");
+}
+$result = liga_seed_demo_data(true);
+WP_CLI::success("Seed ejecutado: " . wp_json_encode($result));
+'
+
+echo "Datos demo cargados."

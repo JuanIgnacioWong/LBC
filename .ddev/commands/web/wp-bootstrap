@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd /var/www/html
+
+if [ ! -f wp-load.php ]; then
+  echo "Descargando WordPress core..."
+  wp core download --force --locale=es_ES
+fi
+
+if [ ! -f wp-config.php ]; then
+  echo "Creando wp-config.php..."
+  wp config create \
+    --dbname=db \
+    --dbuser=db \
+    --dbpass=db \
+    --dbhost=db \
+    --skip-check \
+    --force
+fi
+
+if ! wp core is-installed >/dev/null 2>&1; then
+  echo "Instalando WordPress..."
+  wp core install \
+    --url="${DDEV_PRIMARY_URL}" \
+    --title="Liga Basquet Chile" \
+    --admin_user=admin \
+    --admin_password=admin123! \
+    --admin_email=admin@example.com
+fi
+
+echo "Activando tema..."
+wp theme activate liga-basket-chile
+
+if ! wp menu list --format=csv | grep -q "^principal,"; then
+  wp menu create "Principal" --porcelain >/dev/null || true
+fi
+
+echo "Bootstrap completado."
+echo "URL: ${DDEV_PRIMARY_URL}"
+echo "Usuario: admin"
+echo "Clave: admin123!"

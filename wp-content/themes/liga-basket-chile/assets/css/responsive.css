@@ -1,0 +1,501 @@
+/* Home responsive add-on layer (mobile-first + performance friendly) */
+
+/* Base safeguards: overflow, viewport fit and reveal helper */
+.liga-body {
+  overflow-x: hidden;
+}
+
+.liga-container,
+.liga-home,
+.liga-home .liga-grid > *,
+.liga-hero-layout > * {
+  min-width: 0;
+}
+
+.liga-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.liga-table-wrap::-webkit-scrollbar {
+  height: 0.45rem;
+}
+
+.liga-table-wrap::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(11, 42, 102, 0.32);
+}
+
+.liga-body.liga-menu-open {
+  overflow: hidden;
+}
+
+.is-reveal-pending {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 360ms ease, transform 420ms ease;
+}
+
+.is-reveal-pending.is-visible,
+.is-reveal-pending.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Sticky state hook handled by JS */
+.liga-header.liga-header--scrolled {
+  box-shadow: 0 16px 34px rgba(2, 8, 20, 0.45);
+}
+
+/* Header/nav touch ergonomics */
+.liga-header-nav-link,
+.liga-header-menu-button,
+.liga-header-search-button,
+.liga-header-admin-cta {
+  touch-action: manipulation;
+}
+
+/* ------------------------------- */
+/* @media (max-width: 1200px)      */
+/* ------------------------------- */
+@media (max-width: 1200px) {
+  .liga-container {
+    width: min(var(--liga-container-max), calc(100% - 2rem));
+  }
+
+  .liga-home > section:not(.liga-hero) {
+    padding-block: 2.6rem;
+  }
+
+  .liga-header-inner {
+    min-height: 76px;
+    gap: 0.75rem;
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .liga-header-nav {
+    justify-self: end;
+  }
+
+  .liga-header-nav-list {
+    gap: 0.1rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .liga-header-nav-link {
+    padding: 0.4rem 0.62rem;
+    font-size: 0.88rem;
+  }
+
+  .liga-hero-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: 1.1rem;
+  }
+
+  .liga-hero-title {
+    font-size: clamp(2rem, 6.2vw, 4.4rem);
+  }
+
+  .liga-hero-media {
+    min-height: 360px;
+  }
+
+  .liga-home-main-panels-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .liga-news-card-content {
+    padding: 0.85rem;
+  }
+}
+
+/* ------------------------------ */
+/* @media (max-width: 992px)      */
+/* ------------------------------ */
+@media (max-width: 992px) {
+  .liga-home > section:not(.liga-hero) {
+    padding-block: 2.3rem;
+  }
+
+  .liga-header-inner {
+    min-height: 72px;
+    grid-template-columns: auto auto 1fr auto;
+    gap: 0.5rem;
+  }
+
+  .liga-header-menu-button {
+    display: inline-flex;
+  }
+
+  .liga-header-nav {
+    position: absolute;
+    top: calc(100% + 0.45rem);
+    left: 0;
+    right: 0;
+    z-index: 80;
+    display: none;
+    max-height: calc(100vh - 7rem);
+    overflow: auto;
+    padding: 0.65rem;
+    border-radius: var(--liga-radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(5, 10, 24, 0.98);
+    box-shadow: var(--liga-shadow-md);
+  }
+
+  .liga-header-nav.liga-nav-open {
+    display: block;
+  }
+
+  .liga-header-nav-list {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.24rem;
+  }
+
+  .liga-header-nav-link {
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 0.65rem 0.75rem;
+    border-radius: var(--liga-radius-sm);
+  }
+
+  .liga-header-actions {
+    gap: 0.42rem;
+  }
+
+  .liga-header-admin-cta {
+    min-height: 42px;
+    padding-inline: 0.8rem;
+    font-size: 0.78rem;
+  }
+
+  .liga-hero {
+    padding-block: 1.35rem 2.15rem;
+  }
+
+  .liga-hero-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .liga-hero-content {
+    max-width: 100%;
+  }
+
+  .liga-hero-media {
+    min-height: 320px;
+  }
+
+  .liga-home-main-panels-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .liga-standings-related-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .liga-standings-panel {
+    grid-column: 1 / -1;
+  }
+
+  .liga-news-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .liga-sponsors-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .liga-footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ------------------------------ */
+/* @media (max-width: 768px)      */
+/* ------------------------------ */
+@media (max-width: 768px) {
+  .liga-home > section:not(.liga-hero) {
+    padding-block: 2rem;
+  }
+
+  .liga-topbar-inner {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+    min-height: auto;
+    padding-block: 0.4rem;
+  }
+
+  .liga-topbar-social {
+    order: 3;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .liga-topbar-social-list {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .liga-topbar-season {
+    order: 1;
+  }
+
+  .liga-topbar-contact-link {
+    margin-left: auto;
+  }
+
+  .liga-header-brand-name {
+    max-width: 170px;
+    font-size: 0.98rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .liga-hero {
+    padding-top: 1.1rem;
+  }
+
+  .liga-hero-title {
+    font-size: clamp(1.9rem, 10vw, 3.2rem);
+  }
+
+  .liga-hero-description {
+    font-size: 0.95rem;
+  }
+
+  .liga-hero-actions {
+    width: 100%;
+    gap: 0.52rem;
+  }
+
+  .liga-hero-actions > * {
+    flex: 1 1 180px;
+    min-height: 44px;
+  }
+
+  .liga-hero-media {
+    min-height: 260px;
+  }
+
+  .liga-home-main-panels-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .liga-standings-page-hero {
+    padding-top: 0.5rem;
+  }
+
+  .liga-standings-page-title {
+    font-size: clamp(1.4rem, 7.2vw, 2rem);
+  }
+
+  .liga-standings-panel {
+    grid-column: auto;
+  }
+
+  .liga-standings-panel,
+  .liga-results-panel,
+  .liga-fixture-panel {
+    padding: 0.72rem;
+  }
+
+  .liga-result-card,
+  .liga-fixture-card {
+    padding: 0.68rem;
+  }
+
+  .liga-result-team-logo,
+  .liga-fixture-team-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .liga-result-score {
+    min-width: 84px;
+    font-size: clamp(1.3rem, 6.5vw, 1.7rem);
+  }
+
+  .liga-news-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .liga-news-card-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .liga-sponsors-list {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(128px, 1fr);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.2rem;
+  }
+
+  .liga-sponsors-item {
+    min-height: 78px;
+    scroll-snap-align: start;
+  }
+
+  .liga-footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.1rem;
+  }
+
+  .liga-footer-legal-inner {
+    min-height: auto;
+    flex-wrap: wrap;
+    padding-block: 0.7rem;
+  }
+}
+
+/* ------------------------------ */
+/* @media (max-width: 576px)      */
+/* ------------------------------ */
+@media (max-width: 576px) {
+  .liga-container {
+    width: calc(100% - 1rem);
+  }
+
+  .liga-home > section:not(.liga-hero) {
+    padding-block: 1.6rem;
+  }
+
+  .liga-topbar {
+    font-size: 0.7rem;
+  }
+
+  .liga-topbar-claim {
+    display: none;
+  }
+
+  .liga-header-inner {
+    min-height: 66px;
+    grid-template-columns: auto auto 1fr;
+  }
+
+  .liga-header-brand-figure {
+    width: 42px;
+    height: 42px;
+  }
+
+  .liga-header-brand-logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .liga-header-brand-name {
+    max-width: 120px;
+    font-size: 0.88rem;
+  }
+
+  .liga-header-search-button {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
+  .liga-header-admin-cta {
+    min-height: 40px;
+    padding-inline: 0.62rem;
+    font-size: 0.72rem;
+  }
+
+  .liga-hero-title {
+    font-size: clamp(1.7rem, 11vw, 2.55rem);
+  }
+
+  .liga-hero-description {
+    font-size: 0.9rem;
+  }
+
+  .liga-hero-actions > * {
+    flex: 1 1 100%;
+  }
+
+  .liga-hero-media {
+    min-height: 210px;
+    max-height: 48vh;
+  }
+
+  .liga-standings-table {
+    font-size: 0.78rem;
+  }
+
+  .liga-standings-table thead th,
+  .liga-standings-table tbody th,
+  .liga-standings-table tbody td {
+    padding: 0.5rem 0.42rem;
+  }
+
+  /* Hide secondary columns on narrow screens: PP + INC */
+  .liga-standings-table th:nth-child(6),
+  .liga-standings-table td:nth-child(6),
+  .liga-standings-table th:nth-child(7),
+  .liga-standings-table td:nth-child(7) {
+    display: none;
+  }
+
+  .liga-table-team-logo {
+    width: 26px;
+    height: 26px;
+  }
+
+  .liga-result-body {
+    grid-template-columns: minmax(34px, auto) auto minmax(34px, auto);
+  }
+
+  .liga-fixture-head {
+    flex-wrap: wrap;
+  }
+
+  .liga-fixture-teams {
+    grid-template-columns: auto 1fr;
+    row-gap: 0.3rem;
+  }
+
+  .liga-fixture-versus {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .liga-news-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .liga-news-card-media {
+    aspect-ratio: 15 / 9;
+  }
+
+  .liga-sponsors-list {
+    grid-auto-columns: minmax(108px, 1fr);
+  }
+
+  .liga-footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .liga-footer-social-list {
+    grid-template-columns: repeat(2, minmax(0, max-content));
+  }
+
+  .liga-footer-legal-list {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.38rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-reveal-pending {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

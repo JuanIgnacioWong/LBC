@@ -1,0 +1,99 @@
+name: Deploy WordPress to cPanel
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cpanel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+
+      - name: Add host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.CPANEL_SSH_PORT }}" "${{ secrets.CPANEL_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy wp-content to staging
+        env:
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          REMOTE_PATH: ${{ secrets.CPANEL_STAGING_PATH }}
+        run: |
+          rsync -az --delete \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude ".ddev/" \
+            --exclude "node_modules/" \
+            --exclude "wp-content/uploads/" \
+            -e "ssh -p ${SSH_PORT}" \
+            ./wp-content/ "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/wp-content/"
+
+      - name: Run post-deploy commands on staging
+        env:
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          REMOTE_PATH: ${{ secrets.CPANEL_STAGING_PATH }}
+        run: |
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "cd ${REMOTE_PATH}; if [ -f wp-cli.phar ]; then php wp-cli.phar cache flush || true; fi"
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+
+      - name: Add host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.CPANEL_SSH_PORT }}" "${{ secrets.CPANEL_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy wp-content to production
+        env:
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          REMOTE_PATH: ${{ secrets.CPANEL_PROD_PATH }}
+        run: |
+          rsync -az --delete \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude ".ddev/" \
+            --exclude "node_modules/" \
+            --exclude "wp-content/uploads/" \
+            -e "ssh -p ${SSH_PORT}" \
+            ./wp-content/ "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/wp-content/"
+
+      - name: Run post-deploy commands on production
+        env:
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          REMOTE_PATH: ${{ secrets.CPANEL_PROD_PATH }}
+        run: |
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "cd ${REMOTE_PATH}; if [ -f wp-cli.phar ]; then php wp-cli.phar cache flush || true; fi"

@@ -1,0 +1,23 @@
+name: lbc
+type: wordpress
+docroot: .
+php_version: "8.3"
+webserver_type: nginx-fpm
+xdebug_enabled: false
+additional_hostnames: []
+additional_fqdns: []
+database:
+  type: mariadb
+  version: "10.11"
+use_dns_when_possible: true
+composer_version: "2"
+web_environment:
+  - WP_ENVIRONMENT_TYPE=local
+  - WP_DEBUG=1
+  - WP_DEBUG_LOG=1
+  - WP_DEBUG_DISPLAY=0
+router_http_port: "8085"
+router_https_port: "8443"
+hooks:
+  post-start:
+    - exec: "echo 'Proyecto listo en https://lbc.ddev.site y http://127.0.0.1:8085'"

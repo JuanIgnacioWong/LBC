@@ -1,0 +1,35 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# DDEV local artifacts
+.ddev/.global_commands/
+.ddev/.router_nginx/
+.ddev/db_snapshots/
+
+# WordPress runtime
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/backup*/
+wp-content/advanced-cache.php
+wp-content/object-cache.php
+
+# WordPress generated / bundled content
+wp-content/languages/
+wp-content/plugins/akismet/
+wp-content/plugins/hello.php
+wp-content/themes/*
+!wp-content/themes/liga-basket-chile/
+!wp-content/themes/liga-basket-chile/**
+
+# Env / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Logs
+*.log
+wp-content/debug.log

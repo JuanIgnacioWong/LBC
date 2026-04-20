@@ -1,0 +1,27 @@
+/*
+Theme Name: Liga Basket Chile
+Theme URI: https://example.com/liga-basket-chile
+Author: Liga Basket Chile
+Author URI: https://example.com
+Description: Tema premium y escalable para la Liga de Basquetbol Chile.
+Version: 0.1.0
+Requires at least: 6.4
+Tested up to: 6.8
+Requires PHP: 8.1
+Text Domain: liga-basket-chile
+License: GNU General Public License v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+*/
+
+:root {
+  --color-primary: #2f57d7;
+  --color-secondary: #ff9f1c;
+  --color-dark: #0b0f1a;
+  --color-surface: #111827;
+  --color-light: #f8fafc;
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --font-heading: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+}
