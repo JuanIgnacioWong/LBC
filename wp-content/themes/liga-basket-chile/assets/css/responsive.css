@@ -89,7 +89,7 @@
     font-size: 0.88rem;
   }
 
-  .liga-hero-layout {
+  .liga-hero-slide {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
     gap: 1.1rem;
   }
@@ -104,6 +104,11 @@
 
   .liga-home-main-panels-grid {
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .liga-single-post__layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+    gap: 1.05rem;
   }
 
   .liga-news-card-content {
@@ -166,6 +171,19 @@
     gap: 0.42rem;
   }
 
+  .liga-header-search-form {
+    flex-wrap: wrap;
+  }
+
+  .liga-header-search-form input[type="search"] {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .liga-header-search-submit {
+    width: 100%;
+  }
+
   .liga-header-admin-cta {
     min-height: 42px;
     padding-inline: 0.8rem;
@@ -176,7 +194,7 @@
     padding-block: 1.35rem 2.15rem;
   }
 
-  .liga-hero-layout {
+  .liga-hero-slide {
     grid-template-columns: 1fr;
   }
 
@@ -190,6 +208,19 @@
 
   .liga-home-main-panels-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .liga-single-post__layout {
+    grid-template-columns: minmax(0, 1.32fr) minmax(240px, 0.95fr);
+    gap: 0.9rem;
+  }
+
+  .liga-single-post__content {
+    padding: 0.95rem;
+  }
+
+  .liga-single-post__title {
+    font-size: clamp(1.5rem, 3.8vw, 2.1rem);
   }
 
   .liga-standings-related-nav {
@@ -222,29 +253,37 @@
   }
 
   .liga-topbar-inner {
-    flex-wrap: wrap;
     row-gap: 0.35rem;
     min-height: auto;
     padding-block: 0.4rem;
   }
 
   .liga-topbar-social {
-    order: 3;
     margin-right: 0;
     width: 100%;
   }
 
   .liga-topbar-social-list {
-    justify-content: flex-start;
+    justify-content: center;
     flex-wrap: wrap;
+    gap: 0.45rem 0.7rem;
   }
 
-  .liga-topbar-season {
-    order: 1;
+  .liga-topbar-social-link {
+    min-height: 34px;
   }
 
-  .liga-topbar-contact-link {
-    margin-left: auto;
+  .liga-topbar__menu .sub-menu {
+    position: static;
+    display: none;
+    min-width: 0;
+    margin-top: 0.2rem;
+    border-radius: 0.5rem;
+  }
+
+  .liga-topbar__item:focus-within > .sub-menu,
+  .liga-topbar__item:hover > .sub-menu {
+    display: block;
   }
 
   .liga-header-brand-name {
@@ -281,8 +320,43 @@
     min-height: 260px;
   }
 
+  .liga-hero-slider__arrow {
+    width: 2.35rem;
+    height: 2.35rem;
+    font-size: 1.35rem;
+  }
+
+  .liga-hero-slider__dots {
+    margin-top: 0.72rem;
+  }
+
   .liga-home-main-panels-grid {
     grid-template-columns: 1fr;
+  }
+
+  .liga-single-post {
+    padding-block: 0.8rem 1.4rem;
+  }
+
+  .liga-single-post__layout {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .liga-single-post__sidebar {
+    gap: 0.75rem;
+  }
+
+  .liga-single-post__nav {
+    grid-template-columns: 1fr;
+  }
+
+  .liga-single-post__nav-link--next {
+    text-align: left;
+  }
+
+  .liga-single-post__result-scoreline {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
   .liga-standings-page-hero {
@@ -368,12 +442,44 @@
     padding-block: 1.6rem;
   }
 
+  .liga-single-post__content {
+    padding: 0.82rem;
+  }
+
+  .liga-single-post__title {
+    font-size: clamp(1.4rem, 8vw, 1.9rem);
+  }
+
+  .liga-single-post__entry {
+    font-size: 0.95rem;
+    line-height: 1.64;
+  }
+
+  .liga-single-post__latest-link {
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 0.54rem;
+    padding: 0.42rem;
+  }
+
+  .liga-single-post__latest-thumb {
+    width: 74px;
+    height: 54px;
+  }
+
+  .liga-single-post__result-team {
+    font-size: 0.76rem;
+  }
+
+  .liga-single-post__fixture-teams {
+    font-size: 0.8rem;
+  }
+
   .liga-topbar {
     font-size: 0.7rem;
   }
 
-  .liga-topbar-claim {
-    display: none;
+  .liga-topbar-social-list {
+    gap: 0.4rem 0.6rem;
   }
 
   .liga-header-inner {
@@ -382,13 +488,15 @@
   }
 
   .liga-header-brand-figure {
-    width: 42px;
-    height: 42px;
+    width: auto;
+    height: auto;
   }
 
   .liga-header-brand-logo {
-    width: 34px;
-    height: 34px;
+    width: auto;
+    height: auto;
+    max-height: 50px;
+    max-width: min(40vw, 150px);
   }
 
   .liga-header-brand-name {
@@ -399,6 +507,11 @@
   .liga-header-search-button {
     width: 2.2rem;
     height: 2.2rem;
+  }
+
+  .liga-header-search-submit {
+    min-height: 40px;
+    font-size: 0.76rem;
   }
 
   .liga-header-admin-cta {

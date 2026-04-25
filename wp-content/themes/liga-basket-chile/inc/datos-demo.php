@@ -180,6 +180,614 @@ function liga_seed_demo_data( $force = false ) {
 }
 
 /**
+ * Retorna los links referenciales para poblar el menu superior.
+ *
+ * @return array<int, array<string, string>>
+ */
+function liga_get_topbar_menu_demo_items() {
+	return array(
+		array(
+			'title' => 'Temporada 2026',
+			'url'   => '#',
+			'icon'  => 'calendar_month',
+		),
+		array(
+			'title' => 'Fixture',
+			'url'   => home_url( '/partidos/' ),
+			'icon'  => 'event',
+		),
+		array(
+			'title' => 'Tabla de posiciones',
+			'url'   => home_url( '/tabla/' ),
+			'icon'  => 'leaderboard',
+		),
+		array(
+			'title' => 'Últimos resultados',
+			'url'   => home_url( '/resultados/' ),
+			'icon'  => 'scoreboard',
+		),
+		array(
+			'title' => 'Contacto',
+			'url'   => home_url( '/contacto/' ),
+			'icon'  => 'mail',
+		),
+		array(
+			'title' => 'Instagram',
+			'url'   => 'https://instagram.com/',
+			'icon'  => 'photo_camera',
+		),
+		array(
+			'title' => 'Facebook',
+			'url'   => 'https://facebook.com/',
+			'icon'  => 'facebook',
+		),
+		array(
+			'title' => 'YouTube',
+			'url'   => 'https://youtube.com/',
+			'icon'  => 'smart_display',
+		),
+	);
+}
+
+/**
+ * Retorna links referenciales para poblar el menu principal.
+ *
+ * @return array<int, array<string, string>>
+ */
+function liga_get_main_menu_demo_items() {
+	return array(
+		array(
+			'title' => 'Inicio',
+			'url'   => home_url( '/' ),
+		),
+		array(
+			'title' => 'Tabla de Posiciones',
+			'url'   => home_url( '/tabla/' ),
+		),
+		array(
+			'title' => 'Partidos',
+			'url'   => home_url( '/partidos/' ),
+		),
+		array(
+			'title' => 'Equipos',
+			'url'   => home_url( '/equipos/' ),
+		),
+		array(
+			'title' => 'Noticias',
+			'url'   => home_url( '/noticias/' ),
+		),
+		array(
+			'title' => 'La Liga',
+			'url'   => home_url( '/la-liga/' ),
+		),
+		array(
+			'title' => 'Contacto',
+			'url'   => home_url( '/contacto/' ),
+		),
+	);
+}
+
+/**
+ * Indica si existen banners principales (en cualquier estado relevante).
+ *
+ * @return bool
+ */
+function liga_has_any_banner_principal_posts() {
+	if ( ! post_type_exists( 'banner-principal' ) ) {
+		return false;
+	}
+
+	$existing = get_posts(
+		array(
+			'post_type'              => 'banner-principal',
+			'post_status'            => array( 'publish', 'draft', 'pending', 'future', 'private', 'trash' ),
+			'posts_per_page'         => 1,
+			'fields'                 => 'ids',
+			'no_found_rows'          => true,
+			'update_post_term_cache' => false,
+			'update_post_meta_cache' => false,
+		)
+	);
+
+	return ! empty( $existing );
+}
+
+/**
+ * Crea banners demo iniciales para orientar al usuario final.
+ *
+ * Reglas:
+ * - Solo se ejecuta una vez.
+ * - Si ya existen banners (reales o demo), no crea nada.
+ * - No sobrescribe contenido existente.
+ *
+ * @return void
+ */
+function liga_seed_banner_principal_demo_if_empty() {
+	$already_seeded = (int) get_option( 'liga_banner_principal_demo_seeded', 0 );
+	if ( $already_seeded > 0 ) {
+		return;
+	}
+
+	if ( liga_has_any_banner_principal_posts() ) {
+		update_option( 'liga_banner_principal_demo_seeded', 1 );
+		return;
+	}
+
+	$demo_banners = array(
+		array(
+			'slug'              => 'banner-principal-demo-1',
+			'eyebrow'           => 'Temporada 2026',
+			'title'             => 'Vive la pasion del basquetbol en Concepcion',
+			'description'       => 'Resultados, programacion, equipos y tabla de posiciones en un solo lugar para seguir cada fecha de la liga.',
+			'cta_primary_text'  => 'Ver partidos',
+			'cta_primary_url'   => home_url( '/partidos/' ),
+			'cta_secondary_text'=> 'Tabla de posiciones',
+			'cta_secondary_url' => home_url( '/tabla/' ),
+			'order'             => 1,
+		),
+		array(
+			'slug'              => 'banner-principal-demo-2',
+			'eyebrow'           => 'Competencia oficial',
+			'title'             => 'Equipos, talento y comunidad en la cancha',
+			'description'       => 'Conoce a los clubes participantes, revisa sus proximos encuentros y sigue el rendimiento de cada division.',
+			'cta_primary_text'  => 'Ver equipos',
+			'cta_primary_url'   => home_url( '/equipos/' ),
+			'cta_secondary_text'=> 'Ultimos resultados',
+			'cta_secondary_url' => home_url( '/resultados/' ),
+			'order'             => 2,
+		),
+		array(
+			'slug'              => 'banner-principal-demo-3',
+			'eyebrow'           => 'Liga Basket Chile',
+			'title'             => 'Toda la informacion del torneo actualizada',
+			'description'       => 'Noticias, fixture, resultados y posiciones disponibles para jugadores, clubes, familias y publico general.',
+			'cta_primary_text'  => 'Noticias',
+			'cta_primary_url'   => home_url( '/noticias/' ),
+			'cta_secondary_text'=> 'Conoce la liga',
+			'cta_secondary_url' => home_url( '/la-liga/' ),
+			'order'             => 3,
+		),
+	);
+
+	foreach ( $demo_banners as $banner ) {
+		$banner_id = liga_upsert_demo_post( 'banner-principal', $banner['slug'], $banner['title'] );
+
+		update_post_meta( $banner_id, 'liga_banner_eyebrow', $banner['eyebrow'] );
+		update_post_meta( $banner_id, 'liga_banner_titulo', $banner['title'] );
+		update_post_meta( $banner_id, 'liga_banner_bajada', $banner['description'] );
+		update_post_meta( $banner_id, 'liga_banner_cta_principal_texto', $banner['cta_primary_text'] );
+		update_post_meta( $banner_id, 'liga_banner_cta_principal_url', esc_url_raw( $banner['cta_primary_url'] ) );
+		update_post_meta( $banner_id, 'liga_banner_cta_secundario_texto', $banner['cta_secondary_text'] );
+		update_post_meta( $banner_id, 'liga_banner_cta_secundario_url', esc_url_raw( $banner['cta_secondary_url'] ) );
+		update_post_meta( $banner_id, '_liga_banner_image_id', 0 );
+		update_post_meta( $banner_id, 'liga_banner_imagen_id', 0 );
+		update_post_meta( $banner_id, 'liga_banner_activo', 1 );
+		update_post_meta( $banner_id, 'liga_banner_orden_visual', (int) $banner['order'] );
+		update_post_meta( $banner_id, 'liga_banner_alineacion_texto', 'izquierda' );
+		update_post_meta( $banner_id, 'liga_banner_altura', 'normal' );
+		update_post_meta( $banner_id, 'liga_banner_overlay', 1 );
+		update_post_meta( $banner_id, 'liga_banner_fondo_degradado', 1 );
+		update_post_meta( $banner_id, 'liga_banner_autoplay', 1 );
+	}
+
+	update_option( 'liga_banner_principal_demo_seeded', 1 );
+	if ( function_exists( 'liga_flush_home_banner_cache' ) ) {
+		liga_flush_home_banner_cache();
+	}
+}
+add_action( 'init', 'liga_seed_banner_principal_demo_if_empty', 35 );
+
+/**
+ * Normaliza una URL para comparar items del menu sin duplicar.
+ *
+ * @param string $url URL a normalizar.
+ * @return string
+ */
+function liga_normalize_menu_item_url( $url ) {
+	$url = trim( (string) $url );
+	if ( '' === $url || '#' === $url ) {
+		return '#';
+	}
+
+	if ( 0 === strpos( $url, '/' ) ) {
+		$url = home_url( $url );
+	}
+
+	return untrailingslashit( strtolower( $url ) );
+}
+
+/**
+ * Agrega links demo a un menu sin repetir items existentes.
+ *
+ * @param int $menu_id ID del menu.
+ * @return void
+ */
+function liga_populate_topbar_demo_menu_items( $menu_id ) {
+	$menu_id        = (int) $menu_id;
+	$existing_items = wp_get_nav_menu_items( $menu_id );
+	$existing_keys  = array();
+
+	if ( is_array( $existing_items ) ) {
+		foreach ( $existing_items as $existing_item ) {
+			$item_title = isset( $existing_item->title ) ? (string) $existing_item->title : '';
+			$item_url   = isset( $existing_item->url ) ? (string) $existing_item->url : '';
+			$item_key   = sanitize_title( $item_title ) . '|' . liga_normalize_menu_item_url( $item_url );
+			$existing_keys[ $item_key ] = true;
+		}
+	}
+
+	foreach ( liga_get_topbar_menu_demo_items() as $demo_item ) {
+		$item_title = isset( $demo_item['title'] ) ? (string) $demo_item['title'] : '';
+		$item_url   = isset( $demo_item['url'] ) ? (string) $demo_item['url'] : '';
+		$item_icon  = isset( $demo_item['icon'] ) ? liga_sanitize_topbar_icon( (string) $demo_item['icon'] ) : '';
+		$item_key   = sanitize_title( $item_title ) . '|' . liga_normalize_menu_item_url( $item_url );
+		$item_url_safe = '#' === trim( $item_url ) ? '#' : esc_url_raw( $item_url );
+
+		if ( isset( $existing_keys[ $item_key ] ) ) {
+			continue;
+		}
+
+		$menu_item_id = wp_update_nav_menu_item(
+			$menu_id,
+			0,
+			array(
+				'menu-item-title'  => wp_strip_all_tags( $item_title ),
+				'menu-item-url'    => $item_url_safe,
+				'menu-item-status' => 'publish',
+				'menu-item-type'   => 'custom',
+			)
+		);
+
+		$menu_item_id = (int) $menu_item_id;
+		if ( $menu_item_id > 0 && '' !== $item_icon ) {
+			update_post_meta( $menu_item_id, LIGA_TOPBAR_ICON_META_KEY, $item_icon );
+		}
+	}
+}
+
+/**
+ * Agrega links demo al menu principal sin repetir items existentes.
+ *
+ * @param int $menu_id ID del menu.
+ * @return void
+ */
+function liga_populate_main_menu_demo_items( $menu_id ) {
+	$menu_id        = (int) $menu_id;
+	$existing_items = wp_get_nav_menu_items( $menu_id );
+	$existing_keys  = array();
+
+	if ( is_array( $existing_items ) ) {
+		foreach ( $existing_items as $existing_item ) {
+			$item_title = isset( $existing_item->title ) ? (string) $existing_item->title : '';
+			$item_url   = isset( $existing_item->url ) ? (string) $existing_item->url : '';
+			$item_key   = sanitize_title( $item_title ) . '|' . liga_normalize_menu_item_url( $item_url );
+			$existing_keys[ $item_key ] = true;
+		}
+	}
+
+	foreach ( liga_get_main_menu_demo_items() as $demo_item ) {
+		$item_title = isset( $demo_item['title'] ) ? (string) $demo_item['title'] : '';
+		$item_url   = isset( $demo_item['url'] ) ? (string) $demo_item['url'] : '';
+		$item_key   = sanitize_title( $item_title ) . '|' . liga_normalize_menu_item_url( $item_url );
+		$item_url_safe = '#' === trim( $item_url ) ? '#' : esc_url_raw( $item_url );
+
+		if ( isset( $existing_keys[ $item_key ] ) ) {
+			continue;
+		}
+
+		wp_update_nav_menu_item(
+			$menu_id,
+			0,
+			array(
+				'menu-item-title'  => wp_strip_all_tags( $item_title ),
+				'menu-item-url'    => $item_url_safe,
+				'menu-item-status' => 'publish',
+				'menu-item-type'   => 'custom',
+			)
+		);
+	}
+}
+
+/**
+ * Garantiza estado minimo del menu principal demo sin sobrescribir contenido real.
+ *
+ * @return bool
+ */
+function liga_ensure_main_menu_demo_state() {
+	$locations        = (array) get_theme_mod( 'nav_menu_locations', array() );
+	$assigned_menu_id = isset( $locations['menu_principal'] ) ? (int) $locations['menu_principal'] : 0;
+
+	if ( $assigned_menu_id > 0 ) {
+		$assigned_menu_obj = wp_get_nav_menu_object( $assigned_menu_id );
+		if ( $assigned_menu_obj instanceof WP_Term ) {
+			$assigned_items = wp_get_nav_menu_items( $assigned_menu_id );
+			if ( empty( $assigned_items ) || ! is_array( $assigned_items ) ) {
+				liga_populate_main_menu_demo_items( $assigned_menu_id );
+			}
+			return true;
+		}
+
+		unset( $locations['menu_principal'] );
+		set_theme_mod( 'nav_menu_locations', $locations );
+	}
+
+	$legacy_primary_id = isset( $locations['primary'] ) ? (int) $locations['primary'] : 0;
+	if ( $legacy_primary_id > 0 ) {
+		$legacy_menu_obj = wp_get_nav_menu_object( $legacy_primary_id );
+		if ( $legacy_menu_obj instanceof WP_Term ) {
+			$legacy_items = wp_get_nav_menu_items( $legacy_primary_id );
+			if ( empty( $legacy_items ) || ! is_array( $legacy_items ) ) {
+				liga_populate_main_menu_demo_items( $legacy_primary_id );
+			}
+
+			$locations['menu_principal'] = $legacy_primary_id;
+			set_theme_mod( 'nav_menu_locations', $locations );
+			return true;
+		}
+	}
+
+	$menu_name = 'Menú Principal';
+	$menu_obj  = wp_get_nav_menu_object( $menu_name );
+	$menu_id   = ( $menu_obj instanceof WP_Term ) ? (int) $menu_obj->term_id : 0;
+
+	if ( $menu_id <= 0 ) {
+		$created_menu = wp_create_nav_menu( $menu_name );
+		if ( is_wp_error( $created_menu ) ) {
+			return false;
+		}
+		$menu_id = (int) $created_menu;
+	}
+
+	if ( $menu_id <= 0 ) {
+		return false;
+	}
+
+	$existing_items = wp_get_nav_menu_items( $menu_id );
+	if ( empty( $existing_items ) || ! is_array( $existing_items ) ) {
+		liga_populate_main_menu_demo_items( $menu_id );
+	}
+
+	$locations['menu_principal'] = $menu_id;
+	if ( empty( $locations['primary'] ) ) {
+		$locations['primary'] = $menu_id;
+	}
+	set_theme_mod( 'nav_menu_locations', $locations );
+
+	return true;
+}
+
+/**
+ * Inicializa menu principal demo una sola vez al activar tema.
+ *
+ * @return void
+ */
+function liga_seed_main_menu_demo_once() {
+	if ( is_admin() && is_user_logged_in() && ! current_user_can( 'edit_theme_options' ) ) {
+		return;
+	}
+
+	$already_seeded = (int) get_option( 'liga_main_menu_demo_seeded', 0 );
+	if ( $already_seeded > 0 ) {
+		return;
+	}
+
+	if ( liga_ensure_main_menu_demo_state() ) {
+		update_option( 'liga_main_menu_demo_seeded', 1 );
+	}
+}
+add_action( 'after_switch_theme', 'liga_seed_main_menu_demo_once' );
+
+/**
+ * Backfill one-shot para instalaciones existentes del menu principal.
+ *
+ * @return void
+ */
+function liga_seed_main_menu_demo_admin_backfill() {
+	if ( ! is_admin() || ! current_user_can( 'edit_theme_options' ) ) {
+		return;
+	}
+
+	$already_backfilled = (int) get_option( 'liga_main_menu_demo_backfill_v1', 0 );
+	if ( $already_backfilled > 0 ) {
+		return;
+	}
+
+	if ( liga_ensure_main_menu_demo_state() ) {
+		update_option( 'liga_main_menu_demo_seeded', 1 );
+	}
+
+	update_option( 'liga_main_menu_demo_backfill_v1', 1 );
+}
+add_action( 'admin_init', 'liga_seed_main_menu_demo_admin_backfill' );
+
+/**
+ * Garantiza estado minimo del menu topbar demo sin sobrescribir contenido real.
+ *
+ * - Si la ubicacion tiene menu valido con items, no altera items.
+ * - Si la ubicacion tiene menu valido vacio, agrega items demo.
+ * - Si la ubicacion apunta a un menu invalido, limpia y recrea asignacion.
+ * - Si no hay ubicacion asignada, crea/usa "Menú Topbar" y lo asigna.
+ *
+ * @return bool True si pudo garantizar el estado; false si no pudo crear menu.
+ */
+function liga_ensure_topbar_menu_demo_state() {
+	$locations        = (array) get_theme_mod( 'nav_menu_locations', array() );
+	$assigned_menu_id = isset( $locations['liga_topbar_menu'] ) ? (int) $locations['liga_topbar_menu'] : 0;
+
+	if ( $assigned_menu_id > 0 ) {
+		$assigned_menu_obj = wp_get_nav_menu_object( $assigned_menu_id );
+		if ( $assigned_menu_obj instanceof WP_Term ) {
+			$assigned_items = wp_get_nav_menu_items( $assigned_menu_id );
+			if ( empty( $assigned_items ) || ! is_array( $assigned_items ) ) {
+				liga_populate_topbar_demo_menu_items( $assigned_menu_id );
+			}
+
+			return true;
+		}
+
+		// Limpia asignacion invalida (menu eliminado) para permitir recreacion segura.
+		unset( $locations['liga_topbar_menu'] );
+		set_theme_mod( 'nav_menu_locations', $locations );
+	}
+
+	if ( ! empty( $locations['liga_topbar_menu'] ) ) {
+		return true;
+	}
+
+	$menu_name = 'Menú Topbar';
+	$menu_obj  = wp_get_nav_menu_object( $menu_name );
+	$menu_id   = ( $menu_obj instanceof WP_Term ) ? (int) $menu_obj->term_id : 0;
+
+	if ( $menu_id <= 0 ) {
+		$created_menu = wp_create_nav_menu( $menu_name );
+		if ( is_wp_error( $created_menu ) ) {
+			return false;
+		}
+		$menu_id = (int) $created_menu;
+	}
+
+	if ( $menu_id <= 0 ) {
+		return false;
+	}
+
+	$existing_items = wp_get_nav_menu_items( $menu_id );
+	if ( empty( $existing_items ) || ! is_array( $existing_items ) ) {
+		liga_populate_topbar_demo_menu_items( $menu_id );
+	}
+
+	$locations['liga_topbar_menu'] = $menu_id;
+	set_theme_mod( 'nav_menu_locations', $locations );
+
+	return true;
+}
+
+/**
+ * Crea y asigna menu demo para topbar una sola vez de forma segura.
+ *
+ * Reglas:
+ * - Si la ubicacion ya tiene menu asignado, no modifica nada.
+ * - Si existe un menu "Menú Topbar" con items, lo respeta y solo lo asigna.
+ * - Si no existe, lo crea y agrega links referenciales.
+ *
+ * @return void
+ */
+function liga_seed_topbar_menu_demo_once() {
+	if ( is_admin() && is_user_logged_in() && ! current_user_can( 'edit_theme_options' ) ) {
+		return;
+	}
+
+	$already_seeded = (int) get_option( 'liga_topbar_menu_demo_seeded', 0 );
+	if ( $already_seeded > 0 ) {
+		return;
+	}
+
+	if ( liga_ensure_topbar_menu_demo_state() ) {
+		update_option( 'liga_topbar_menu_demo_seeded', 1 );
+	}
+}
+add_action( 'after_switch_theme', 'liga_seed_topbar_menu_demo_once' );
+
+/**
+ * Backfill one-shot para instalaciones existentes:
+ * pobla topbar con contenido demo solo si aun no se inicializo.
+ *
+ * @return void
+ */
+function liga_seed_topbar_menu_demo_admin_backfill() {
+	if ( ! is_admin() || ! current_user_can( 'edit_theme_options' ) ) {
+		return;
+	}
+
+	$already_backfilled = (int) get_option( 'liga_topbar_menu_demo_backfill_v2', 0 );
+	if ( $already_backfilled > 0 ) {
+		return;
+	}
+
+	if ( liga_ensure_topbar_menu_demo_state() ) {
+		update_option( 'liga_topbar_menu_demo_seeded', 1 );
+	}
+
+	update_option( 'liga_topbar_menu_demo_backfill_v2', 1 );
+}
+add_action( 'admin_init', 'liga_seed_topbar_menu_demo_admin_backfill' );
+
+/**
+ * Procesa accion manual para poblar menu principal demo.
+ *
+ * @return void
+ */
+function liga_handle_main_menu_seed_request() {
+	if ( ! is_admin() ) {
+		return;
+	}
+
+	if ( ! isset( $_GET['liga_main_menu_seed'] ) ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+	if ( ! wp_verify_nonce( $nonce, 'liga_main_menu_seed' ) ) {
+		liga_add_admin_alert( 'error', __( 'Nonce invalido al poblar el menú principal.', 'liga-basket-chile' ) );
+		return;
+	}
+
+	$ok = liga_ensure_main_menu_demo_state();
+	if ( $ok ) {
+		update_option( 'liga_main_menu_demo_seeded', 1 );
+		update_option( 'liga_main_menu_demo_backfill_v1', 1 );
+		liga_add_admin_alert( 'success', __( 'Menú Principal poblado correctamente.', 'liga-basket-chile' ) );
+	} else {
+		liga_add_admin_alert( 'warning', __( 'No fue posible poblar el Menú Principal.', 'liga-basket-chile' ) );
+	}
+
+	wp_safe_redirect( remove_query_arg( array( 'liga_main_menu_seed', '_wpnonce' ) ) );
+	exit;
+}
+add_action( 'admin_init', 'liga_handle_main_menu_seed_request' );
+
+/**
+ * Procesa accion manual para poblar menu topbar demo.
+ *
+ * @return void
+ */
+function liga_handle_topbar_seed_request() {
+	if ( ! is_admin() ) {
+		return;
+	}
+
+	if ( ! isset( $_GET['liga_topbar_seed'] ) ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+	if ( ! wp_verify_nonce( $nonce, 'liga_topbar_seed' ) ) {
+		liga_add_admin_alert( 'error', __( 'Nonce invalido al poblar el menú topbar.', 'liga-basket-chile' ) );
+		return;
+	}
+
+	$ok = liga_ensure_topbar_menu_demo_state();
+	if ( $ok ) {
+		update_option( 'liga_topbar_menu_demo_seeded', 1 );
+		update_option( 'liga_topbar_menu_demo_backfill_v2', 1 );
+		liga_add_admin_alert( 'success', __( 'Menú Topbar poblado correctamente.', 'liga-basket-chile' ) );
+	} else {
+		liga_add_admin_alert( 'warning', __( 'No fue posible poblar el Menú Topbar.', 'liga-basket-chile' ) );
+	}
+
+	wp_safe_redirect( remove_query_arg( array( 'liga_topbar_seed', '_wpnonce' ) ) );
+	exit;
+}
+add_action( 'admin_init', 'liga_handle_topbar_seed_request' );
+
+/**
  * Procesa accion manual para carga demo desde admin.
  *
  * @return void

@@ -317,6 +317,8 @@ body.liga-body {
 
 /* 5. Topbar */
 .liga-topbar {
+  position: relative;
+  z-index: 85;
   border-bottom: 1px solid var(--liga-border);
   background:
     linear-gradient(90deg, #01040c 0%, #04102d 45%, #01040c 100%);
@@ -332,21 +334,59 @@ body.liga-body {
 }
 
 .liga-topbar-social {
-  margin-right: auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+  min-width: 0;
 }
 
 .liga-topbar-social-list {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 0.72rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.liga-topbar-social-item,
+.liga-topbar__item {
+  position: relative;
 }
 
 .liga-topbar-social-link {
   opacity: 0.86;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0.12rem 0;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  border-radius: 2px;
+}
+
+.liga-topbar__menu a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.liga-topbar__icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.liga-topbar__icon.liga-brand-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  fill: currentColor;
 }
 
 .liga-topbar-social-link:hover {
@@ -354,34 +394,50 @@ body.liga-body {
   opacity: 1;
 }
 
-.liga-topbar-season {
+.liga-topbar-social-link:focus-visible,
+.liga-topbar__menu .sub-menu a:focus-visible {
+  outline: 2px solid var(--liga-secondary);
+  outline-offset: 2px;
+  color: var(--liga-secondary);
+  opacity: 1;
+}
+
+.liga-topbar__menu .sub-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 95;
+  display: none;
+  min-width: 11rem;
+  padding: 0.45rem 0;
+  margin: 0;
+  list-style: none;
+  background: #071c46;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--liga-radius-sm);
+  box-shadow: 0 12px 24px rgba(2, 8, 20, 0.3);
+}
+
+.liga-topbar__menu .sub-menu li {
+  width: 100%;
+}
+
+.liga-topbar__menu .sub-menu a {
+  display: block;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
-.liga-topbar-season-label {
+.liga-topbar__menu .sub-menu a:hover {
   color: var(--liga-secondary);
-  font-family: var(--liga-font-heading);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
-.liga-topbar-claim {
-  color: #e2e8f0;
-  opacity: 0.9;
-  font-size: 0.76rem;
-}
-
-.liga-topbar-contact-link {
-  color: #f8fafc;
-  font-family: var(--liga-font-heading);
-  font-size: 0.88rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.liga-topbar-contact-link:hover {
-  color: var(--liga-secondary);
+.liga-topbar__item:hover > .sub-menu,
+.liga-topbar__item:focus-within > .sub-menu {
+  display: block;
 }
 
 /* 6. Header */
@@ -408,24 +464,27 @@ body.liga-body {
 .liga-header-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0;
   min-width: 0;
 }
 
 .liga-header-brand-figure {
+  margin: 0;
   flex-shrink: 0;
-  width: 50px;
-  height: 50px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.04);
+  width: auto;
+  height: auto;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .liga-header-brand-logo {
-  width: 42px;
-  height: 42px;
+  width: auto;
+  height: auto;
+  max-height: 68px;
+  max-width: min(24vw, 230px);
   object-fit: contain;
 }
 
@@ -498,16 +557,67 @@ body.liga-body {
 .liga-header-search-button {
   width: 2.55rem;
   height: 2.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.04);
 }
 
 .liga-header-search-icon {
+  width: 1.08rem;
+  height: 1.08rem;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.liga-header-search-panel {
+  display: none;
+  margin-top: 0.65rem;
+  padding-top: 0.72rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.liga-header-search-panel.is-open {
+  display: block;
+}
+
+.liga-header-search-form {
+  display: flex;
+  align-items: center;
+  gap: 0.56rem;
+}
+
+.liga-header-search-form input[type="search"] {
+  flex: 1 1 auto;
+  min-height: 42px;
+  padding: 0.62rem 0.75rem;
+  border-radius: var(--liga-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
+}
+
+.liga-header-search-form input[type="search"]::placeholder {
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.liga-header-search-submit {
+  min-height: 42px;
+  padding: 0.62rem 0.88rem;
+  border-radius: var(--liga-radius-sm);
+  border: 1px solid transparent;
+  background: var(--liga-secondary);
+  color: #111827;
   font-family: var(--liga-font-heading);
-  font-size: 0.74rem;
+  font-size: 0.82rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
 }
 
 /* 7. Hero */
@@ -538,10 +648,72 @@ body.liga-body {
 }
 
 .liga-hero-layout {
+  position: relative;
+}
+
+.liga-hero-slider {
+  position: relative;
+}
+
+.liga-hero-slide {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   align-items: stretch;
   gap: clamp(1rem, 2vw, 1.8rem);
+}
+
+.liga-hero-layout.has-multiple-slides .liga-hero-slider {
+  display: grid;
+}
+
+.liga-hero-layout.has-multiple-slides .liga-hero-slide {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity var(--liga-transition-base), transform var(--liga-transition-base), visibility 0s linear 260ms;
+}
+
+.liga-hero-layout.has-multiple-slides .liga-hero-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+
+.liga-hero-slide.has-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--liga-radius-lg);
+  background:
+    linear-gradient(120deg, rgba(7, 28, 70, 0.36) 0%, rgba(11, 42, 102, 0.18) 36%, rgba(247, 147, 30, 0.12) 100%);
+}
+
+.liga-hero-slide.is-align-center .liga-hero-content {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.liga-hero-slide.is-align-right .liga-hero-content {
+  margin-left: auto;
+  text-align: right;
+}
+
+.liga-hero-slide.is-height-compact .liga-hero-media {
+  min-height: clamp(230px, 28vw, 360px);
+}
+
+.liga-hero-slide.is-height-normal .liga-hero-media {
+  min-height: clamp(280px, 35vw, 470px);
+}
+
+.liga-hero-slide.is-height-wide .liga-hero-media {
+  min-height: clamp(320px, 40vw, 560px);
 }
 
 .liga-hero-content {
@@ -598,6 +770,7 @@ body.liga-body {
 
 .liga-hero-media {
   position: relative;
+  margin: 0;
   min-height: clamp(280px, 35vw, 470px);
   overflow: hidden;
   border-radius: var(--liga-radius-lg);
@@ -607,11 +780,110 @@ body.liga-body {
     linear-gradient(140deg, rgba(7, 28, 70, 0.45), rgba(5, 5, 5, 0.7));
 }
 
+.liga-hero-slide.has-overlay .liga-hero-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 10, 24, 0.06) 0%, rgba(5, 10, 24, 0.42) 100%);
+  pointer-events: none;
+}
+
 .liga-hero-image {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
+  object-position: center center;
   filter: contrast(1.04) saturate(1.08) brightness(0.86);
+  aspect-ratio: 16 / 9;
+}
+
+.liga-hero-media.liga-hero-layout__media > .liga-hero-image,
+.liga-hero-media.liga-hero-layout__media > .liga-hero-layout__image,
+.liga-hero-media.liga-hero-layout__media > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center center;
+  aspect-ratio: auto;
+}
+
+.liga-hero-slider__controls {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.liga-hero-slider__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(5, 10, 24, 0.68);
+  color: #ffffff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--liga-transition-base), border-color var(--liga-transition-fast), background-color var(--liga-transition-fast);
+}
+
+.liga-hero-slider__arrow:hover {
+  transform: translateY(-1px);
+  border-color: rgba(247, 147, 30, 0.6);
+  background: rgba(7, 28, 70, 0.9);
+}
+
+.liga-hero-slider__arrow:focus-visible {
+  outline: none;
+  box-shadow: var(--liga-ring);
+}
+
+.liga-hero-slider__dots {
+  margin-top: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.liga-hero-slider__dot {
+  width: 0.72rem;
+  height: 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: transform var(--liga-transition-base), background-color var(--liga-transition-fast), border-color var(--liga-transition-fast);
+}
+
+.liga-hero-slider__dot:hover {
+  border-color: rgba(247, 147, 30, 0.9);
+}
+
+.liga-hero-slider__dot.is-active {
+  background: var(--liga-secondary);
+  border-color: var(--liga-secondary);
+  transform: scale(1.15);
+}
+
+.liga-hero-slider__dot:focus-visible {
+  outline: none;
+  box-shadow: var(--liga-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liga-hero-layout.has-multiple-slides .liga-hero-slide,
+  .liga-hero-slider__arrow,
+  .liga-hero-slider__dot {
+    transition: none;
+  }
 }
 
 /* 8. Main panels */
@@ -1175,7 +1447,312 @@ body.liga-body {
   filter: saturate(1.08) contrast(1.05);
 }
 
-/* 13. Sponsors */
+/* 13. Single Post */
+.liga-single-post {
+  padding-block: clamp(1.2rem, 2.8vw, 2.2rem);
+}
+
+.liga-single-post__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.72fr) minmax(280px, 0.95fr);
+  gap: clamp(1rem, 2vw, 1.6rem);
+  align-items: start;
+}
+
+.liga-single-post__content {
+  padding: clamp(1rem, 2.4vw, 1.7rem);
+  color: var(--liga-text-dark);
+  background: #ffffff;
+}
+
+.liga-single-post__featured-media {
+  margin: 0 0 1rem;
+  border-radius: var(--liga-radius-md);
+  overflow: hidden;
+}
+
+.liga-single-post__featured-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.liga-single-post__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.48rem 0.66rem;
+}
+
+.liga-single-post__category {
+  min-height: 1.7rem;
+}
+
+.liga-single-post__date {
+  color: #64748b;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.liga-single-post__title {
+  margin-top: 0.8rem;
+  color: var(--liga-primary-strong);
+  font-family: var(--liga-font-heading);
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  line-height: 0.98;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.liga-single-post__entry {
+  margin-top: 1rem;
+  min-width: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  line-height: 1.72;
+}
+
+.liga-single-post__entry > * {
+  max-width: 100%;
+}
+
+.liga-single-post__entry p,
+.liga-single-post__entry ul,
+.liga-single-post__entry ol,
+.liga-single-post__entry blockquote {
+  margin: 0 0 1rem;
+}
+
+.liga-single-post__entry h2,
+.liga-single-post__entry h3,
+.liga-single-post__entry h4 {
+  margin: 1.4rem 0 0.7rem;
+  color: var(--liga-primary-strong);
+  font-family: var(--liga-font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.liga-single-post__entry a {
+  color: var(--liga-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.12em;
+}
+
+.liga-single-post__entry figure,
+.liga-single-post__entry .wp-block-image {
+  margin: 0 0 1rem;
+}
+
+.liga-single-post__entry img {
+  border-radius: var(--liga-radius-sm);
+}
+
+.liga-single-post__entry table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.liga-single-post__entry iframe {
+  width: 100%;
+  max-width: 100%;
+}
+
+.liga-single-post__pagination {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.liga-single-post__pagination-label {
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.liga-single-post__page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--liga-radius-pill);
+  border: 1px solid rgba(11, 42, 102, 0.16);
+  background: #f8fafc;
+  color: var(--liga-primary-strong);
+  font-weight: 700;
+}
+
+.liga-single-post__nav {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(11, 42, 102, 0.12);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.68rem;
+}
+
+.liga-single-post__nav-link {
+  display: grid;
+  gap: 0.24rem;
+  padding: 0.72rem 0.8rem;
+  border-radius: var(--liga-radius-md);
+  border: 1px solid rgba(11, 42, 102, 0.14);
+  background: #f8fafc;
+}
+
+.liga-single-post__nav-label {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.liga-single-post__nav-title {
+  color: #0f172a;
+  font-family: var(--liga-font-heading);
+  font-size: 0.95rem;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.liga-single-post__nav-link--next {
+  text-align: right;
+}
+
+.liga-single-post__sidebar {
+  min-width: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.liga-single-post__widget {
+  min-width: 0;
+}
+
+.liga-single-post__sidebar .liga-results-panel,
+.liga-single-post__sidebar .liga-fixture-panel {
+  margin: 0;
+}
+
+.liga-single-post__sidebar .liga-result-score {
+  min-width: 88px;
+  font-size: clamp(1.12rem, 1.6vw, 1.4rem);
+}
+
+.liga-single-post__result-scoreline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.liga-single-post__result-team {
+  min-width: 0;
+  color: #1e293b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.liga-single-post__result-team--away {
+  text-align: right;
+}
+
+.liga-single-post__fixture-teams {
+  margin-top: 0.5rem;
+  color: #1e293b;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.liga-single-post__latest-news {
+  padding: clamp(0.8rem, 1.5vw, 1rem);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.liga-single-post__latest-list {
+  display: grid;
+  gap: 0.66rem;
+}
+
+.liga-single-post__latest-item {
+  margin: 0;
+}
+
+.liga-single-post__latest-link {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 0.62rem;
+  align-items: center;
+  padding: 0.48rem;
+  border: 1px solid rgba(11, 42, 102, 0.12);
+  border-radius: var(--liga-radius-sm);
+  background: #ffffff;
+}
+
+.liga-single-post__latest-thumb {
+  margin: 0;
+  width: 88px;
+  height: 62px;
+  border-radius: var(--liga-radius-xs);
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.liga-single-post__latest-thumb-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.liga-single-post__latest-thumb-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(11, 42, 102, 0.26), transparent 42%),
+    linear-gradient(160deg, #cbd5e1 0%, #94a3b8 100%);
+}
+
+.liga-single-post__latest-content {
+  min-width: 0;
+}
+
+.liga-single-post__latest-title {
+  color: #0f172a;
+  font-family: var(--liga-font-heading);
+  font-size: 0.9rem;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.liga-single-post__latest-date {
+  margin-top: 0.32rem;
+  display: inline-flex;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.liga-single-post__latest-empty {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+/* 14. Sponsors */
 .liga-sponsors {
   border-top: 1px solid rgba(11, 42, 102, 0.1);
   border-bottom: 1px solid rgba(11, 42, 102, 0.1);
@@ -1235,7 +1812,7 @@ body.liga-body {
   filter: grayscale(0.05) contrast(1.06);
 }
 
-/* 14. Footer */
+/* 15. Footer */
 .liga-footer {
   color: var(--liga-text-soft);
   background:
@@ -1350,7 +1927,7 @@ body.liga-body {
   color: var(--liga-secondary);
 }
 
-/* 15. Estados y microinteracciones */
+/* 16. Estados y microinteracciones */
 .liga-body a:focus-visible,
 .liga-body button:focus-visible {
   outline: none;

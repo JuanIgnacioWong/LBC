@@ -35,8 +35,10 @@
   onReady(() => {
     document.documentElement.classList.add("liga-js-ready");
     initMobileMenu();
+    initHeaderSearch();
     initTabs();
     initStickyHeader();
+    initHeroSliders();
     initRevealOnScroll();
   });
 
@@ -125,6 +127,70 @@
       },
       { passive: true }
     );
+  }
+
+  /**
+   * Header search:
+   * - Toggle panel from search button
+   * - Close on outside click / Escape
+   * - Keep aria-expanded and hidden in sync
+   */
+  function initHeaderSearch() {
+    const searchButton = qs(".liga-header-search-button");
+    const searchPanel = qs("#liga-header-search-panel");
+
+    if (!searchButton || !searchPanel) {
+      return;
+    }
+
+    const openClass = "is-open";
+    const searchInput = qs('input[type="search"]', searchPanel);
+
+    const setSearchState = (isOpen) => {
+      searchPanel.classList.toggle(openClass, isOpen);
+      searchPanel.hidden = !isOpen;
+      searchButton.setAttribute("aria-expanded", String(isOpen));
+
+      if (isOpen && searchInput) {
+        searchInput.focus();
+      }
+    };
+
+    const isSearchOpen = () => searchPanel.classList.contains(openClass);
+
+    setSearchState(false);
+
+    searchButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSearchState(!isSearchOpen());
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!isSearchOpen()) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (searchPanel.contains(target) || searchButton.contains(target)) {
+        return;
+      }
+
+      setSearchState(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !isSearchOpen()) {
+        return;
+      }
+
+      setSearchState(false);
+      searchButton.focus();
+    });
   }
 
   /**
@@ -306,7 +372,203 @@
   }
 
   /**
-   * 4) Reveal on scroll:
+   * 4) Home hero slider:
+   * - Soporta banners multiples activos
+   * - Flechas + dots + teclado
+   * - Autoplay configurable con pausa por hover/interaccion
+   */
+  function initHeroSliders() {
+    const sliderLayouts = qsa(".liga-hero-layout[data-liga-hero-slider]");
+    if (sliderLayouts.length === 0) {
+      return;
+    }
+
+    sliderLayouts.forEach((layout) => {
+      const slides = qsa(".liga-hero-slide", layout);
+      if (slides.length === 0) {
+        return;
+      }
+
+      const sliderEnabled =
+        layout.getAttribute("data-liga-hero-slider") === "1" &&
+        slides.length > 1;
+      const autoplayEnabled =
+        sliderEnabled && layout.getAttribute("data-liga-autoplay") === "1";
+      const autoplayInterval = Math.max(
+        2500,
+        Number.parseInt(
+          layout.getAttribute("data-liga-autoplay-interval") || "5000",
+          10
+        ) || 5000
+      );
+
+      const prevButton = qs(".liga-hero-slider__arrow--prev", layout);
+      const nextButton = qs(".liga-hero-slider__arrow--next", layout);
+      const dots = qsa(".liga-hero-slider__dot", layout);
+
+      let currentIndex = slides.findIndex((slide) =>
+        slide.classList.contains("is-active")
+      );
+      if (currentIndex < 0) {
+        currentIndex = 0;
+      }
+
+      let autoplayTimer = null;
+      let isHovering = false;
+      let userPaused = false;
+
+      const stopAutoplay = () => {
+        if (!autoplayTimer) {
+          return;
+        }
+        window.clearInterval(autoplayTimer);
+        autoplayTimer = null;
+      };
+
+      const startAutoplay = () => {
+        if (!autoplayEnabled || userPaused || isHovering) {
+          return;
+        }
+        stopAutoplay();
+        autoplayTimer = window.setInterval(() => {
+          goToSlide(currentIndex + 1, false);
+        }, autoplayInterval);
+      };
+
+      const normalizeIndex = (index) => {
+        if (slides.length <= 0) {
+          return 0;
+        }
+        const modulo = index % slides.length;
+        return modulo < 0 ? modulo + slides.length : modulo;
+      };
+
+      const syncSlideState = () => {
+        slides.forEach((slide, index) => {
+          const isActive = index === currentIndex;
+          slide.classList.toggle("is-active", isActive);
+          slide.setAttribute("aria-hidden", String(!isActive));
+        });
+
+        dots.forEach((dot, index) => {
+          const isActive = index === currentIndex;
+          dot.classList.toggle("is-active", isActive);
+          dot.setAttribute("aria-current", String(isActive));
+        });
+      };
+
+      const goToSlide = (index, fromUser) => {
+        if (!sliderEnabled) {
+          return;
+        }
+        currentIndex = normalizeIndex(index);
+        syncSlideState();
+
+        if (fromUser) {
+          userPaused = true;
+          stopAutoplay();
+        }
+      };
+
+      syncSlideState();
+
+      if (!sliderEnabled) {
+        return;
+      }
+
+      if (prevButton) {
+        prevButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          goToSlide(currentIndex - 1, true);
+        });
+      }
+
+      if (nextButton) {
+        nextButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          goToSlide(currentIndex + 1, true);
+        });
+      }
+
+      dots.forEach((dot) => {
+        dot.addEventListener("click", (event) => {
+          event.preventDefault();
+          const targetIndex = Number.parseInt(
+            dot.getAttribute("data-liga-slide-to") || "",
+            10
+          );
+          if (Number.isNaN(targetIndex)) {
+            return;
+          }
+          goToSlide(targetIndex, true);
+        });
+      });
+
+      layout.addEventListener("keydown", (event) => {
+        if (!layout.contains(document.activeElement)) {
+          return;
+        }
+
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          goToSlide(currentIndex - 1, true);
+          return;
+        }
+
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          goToSlide(currentIndex + 1, true);
+          return;
+        }
+
+        if (event.key === "Home") {
+          event.preventDefault();
+          goToSlide(0, true);
+          return;
+        }
+
+        if (event.key === "End") {
+          event.preventDefault();
+          goToSlide(slides.length - 1, true);
+        }
+      });
+
+      layout.addEventListener("mouseenter", () => {
+        isHovering = true;
+        stopAutoplay();
+      });
+
+      layout.addEventListener("mouseleave", () => {
+        isHovering = false;
+        startAutoplay();
+      });
+
+      layout.addEventListener("focusin", () => {
+        stopAutoplay();
+      });
+
+      layout.addEventListener("focusout", () => {
+        window.setTimeout(() => {
+          if (!layout.contains(document.activeElement)) {
+            startAutoplay();
+          }
+        }, 0);
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          stopAutoplay();
+          return;
+        }
+        startAutoplay();
+      });
+
+      startAutoplay();
+    });
+  }
+
+  /**
+   * 5) Reveal on scroll:
    * - Uses IntersectionObserver when available
    * - Falls back gracefully
    */

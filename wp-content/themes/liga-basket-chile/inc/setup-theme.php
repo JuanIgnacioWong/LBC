@@ -44,6 +44,8 @@ function liga_setup_theme() {
 	register_nav_menus(
 		array(
 			'primary'   => __( 'Principal', 'liga-basket-chile' ),
+			'menu_principal' => __( 'Menú Principal', 'liga-basket-chile' ),
+			'liga_topbar_menu' => __( 'Menú Topbar', 'liga-basket-chile' ),
 			'secondary' => __( 'Secundario', 'liga-basket-chile' ),
 			'footer'    => __( 'Footer', 'liga-basket-chile' ),
 			'legal'     => __( 'Legal', 'liga-basket-chile' ),

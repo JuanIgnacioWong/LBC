@@ -37,6 +37,9 @@ function liga_get_theme_option_fields() {
 		'institutional_phrase'=> 'text',
 		'top_contact_label'  => 'text',
 		'top_contact_url'    => 'url',
+		'header_login_enabled' => 'checkbox',
+		'header_login_label' => 'text',
+		'header_login_url'   => 'url',
 		'standings_points_win' => 'int',
 		'standings_points_loss' => 'int',
 		'standings_points_walkover_win' => 'int',
@@ -162,6 +165,9 @@ function liga_render_theme_options_page() {
 				<?php liga_render_option_field( 'header_slogan', __( 'Slogan', 'liga-basket-chile' ) ); ?>
 				<?php liga_render_option_field( 'header_cta_label', __( 'CTA texto', 'liga-basket-chile' ) ); ?>
 				<?php liga_render_option_field( 'header_cta_url', __( 'CTA URL', 'liga-basket-chile' ), 'url' ); ?>
+				<?php liga_render_option_field( 'header_login_enabled', __( 'Mostrar botón iniciar sesión', 'liga-basket-chile' ), 'checkbox' ); ?>
+				<?php liga_render_option_field( 'header_login_label', __( 'Texto botón iniciar sesión', 'liga-basket-chile' ) ); ?>
+				<?php liga_render_option_field( 'header_login_url', __( 'URL botón iniciar sesión', 'liga-basket-chile' ), 'url' ); ?>
 				<?php liga_render_option_field( 'social_instagram', __( 'Instagram', 'liga-basket-chile' ), 'url' ); ?>
 				<?php liga_render_option_field( 'social_facebook', __( 'Facebook', 'liga-basket-chile' ), 'url' ); ?>
 				<?php liga_render_option_field( 'social_youtube', __( 'YouTube', 'liga-basket-chile' ), 'url' ); ?>
@@ -216,11 +222,37 @@ function liga_render_theme_options_page() {
 			),
 			'liga_demo_seed'
 		);
+		$topbar_seed_url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'page'             => isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : 'liga-theme-options',
+					'liga_topbar_seed' => 1,
+				),
+				admin_url( 'admin.php' )
+			),
+			'liga_topbar_seed'
+		);
+		$main_menu_seed_url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'page'                => isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : 'liga-theme-options',
+					'liga_main_menu_seed' => 1,
+				),
+				admin_url( 'admin.php' )
+			),
+			'liga_main_menu_seed'
+		);
 		?>
 		<hr>
 		<h2><?php esc_html_e( 'Datos Demo', 'liga-basket-chile' ); ?></h2>
 		<p><?php esc_html_e( 'Carga 6 equipos, 2 divisiones, 12 partidos, 6 noticias y sponsors demo.', 'liga-basket-chile' ); ?></p>
 		<p><a class="button button-secondary" href="<?php echo esc_url( $demo_url ); ?>"><?php esc_html_e( 'Cargar datos demo', 'liga-basket-chile' ); ?></a></p>
+		<h2><?php esc_html_e( 'Menú Principal Demo', 'liga-basket-chile' ); ?></h2>
+		<p><?php esc_html_e( 'Crea/asigna el Menú Principal y agrega enlaces referenciales si aún no existen.', 'liga-basket-chile' ); ?></p>
+		<p><a class="button button-secondary" href="<?php echo esc_url( $main_menu_seed_url ); ?>"><?php esc_html_e( 'Poblar Menú Principal', 'liga-basket-chile' ); ?></a></p>
+		<h2><?php esc_html_e( 'Topbar Demo', 'liga-basket-chile' ); ?></h2>
+		<p><?php esc_html_e( 'Crea/asigna el Menú Topbar y agrega contenido referencial e iconos si aun no existen.', 'liga-basket-chile' ); ?></p>
+		<p><a class="button button-secondary" href="<?php echo esc_url( $topbar_seed_url ); ?>"><?php esc_html_e( 'Poblar Menú Topbar', 'liga-basket-chile' ); ?></a></p>
 	</div>
 	<?php
 }

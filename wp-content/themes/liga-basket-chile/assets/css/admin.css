@@ -1,0 +1,41 @@
+.liga-banner-media-field {
+  max-width: 520px;
+}
+
+.liga-banner-media-field__preview {
+  margin-bottom: 0.75rem;
+  border: 1px dashed #c3c4c7;
+  border-radius: 8px;
+  background: #f6f7f7;
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.liga-banner-media-field__preview-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.liga-banner-media-field__empty {
+  margin: 0;
+  padding: 0.85rem;
+  color: #646970;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.liga-banner-media-field__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.liga-banner-media-field__remove.is-hidden {
+  display: none;
+}

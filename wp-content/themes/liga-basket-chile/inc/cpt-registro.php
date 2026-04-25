@@ -83,6 +83,33 @@ function liga_register_cpts() {
 			'supports'     => array( 'title' ),
 		)
 	);
+
+	register_post_type(
+		'banner-principal',
+		array(
+			'labels'              => array(
+				'name'               => __( 'Banners Principales', 'liga-basket-chile' ),
+				'singular_name'      => __( 'Banner Principal', 'liga-basket-chile' ),
+				'add_new_item'       => __( 'Agregar banner principal', 'liga-basket-chile' ),
+				'edit_item'          => __( 'Editar banner principal', 'liga-basket-chile' ),
+				'new_item'           => __( 'Nuevo banner principal', 'liga-basket-chile' ),
+				'view_item'          => __( 'Ver banner principal', 'liga-basket-chile' ),
+				'search_items'       => __( 'Buscar banners principales', 'liga-basket-chile' ),
+				'not_found'          => __( 'No se encontraron banners principales', 'liga-basket-chile' ),
+				'not_found_in_trash' => __( 'No hay banners principales en papelera', 'liga-basket-chile' ),
+			),
+			'public'              => false,
+			'show_ui'             => true,
+			'show_in_menu'        => true,
+			'show_in_admin_bar'   => true,
+			'show_in_rest'        => true,
+			'publicly_queryable'  => false,
+			'exclude_from_search' => true,
+			'has_archive'         => false,
+			'menu_icon'           => 'dashicons-images-alt2',
+			'supports'            => array( 'title' ),
+		)
+	);
 }
 add_action( 'init', 'liga_register_cpts' );
 

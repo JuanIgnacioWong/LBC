@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registra metaboxes de equipos, partidos y divisiones.
+ * Registra metaboxes de equipos, partidos, divisiones y banner principal.
  *
  * @return void
  */
@@ -38,6 +38,15 @@ function liga_register_metaboxes() {
 		__( 'Datos de la Division', 'liga-basket-chile' ),
 		'liga_render_division_metabox',
 		'division',
+		'normal',
+		'high'
+	);
+
+	add_meta_box(
+		'liga_banner_principal_detalles',
+		__( 'Datos del Banner Principal', 'liga-basket-chile' ),
+		'liga_render_banner_principal_metabox',
+		'banner-principal',
 		'normal',
 		'high'
 	);
@@ -86,6 +95,25 @@ function liga_register_post_meta_fields() {
 		'liga_activa'          => 'integer',
 	);
 
+	$banner_meta = array(
+		'_liga_banner_image_id'           => 'integer',
+		'liga_banner_eyebrow'             => 'string',
+		'liga_banner_titulo'              => 'string',
+		'liga_banner_bajada'              => 'string',
+		'liga_banner_cta_principal_texto' => 'string',
+		'liga_banner_cta_principal_url'   => 'string',
+		'liga_banner_cta_secundario_texto'=> 'string',
+		'liga_banner_cta_secundario_url'  => 'string',
+		'liga_banner_imagen_id'           => 'integer',
+		'liga_banner_activo'              => 'integer',
+		'liga_banner_orden_visual'        => 'integer',
+		'liga_banner_alineacion_texto'    => 'string',
+		'liga_banner_altura'              => 'string',
+		'liga_banner_overlay'             => 'integer',
+		'liga_banner_fondo_degradado'     => 'integer',
+		'liga_banner_autoplay'            => 'integer',
+	);
+
 	foreach ( $equipo_meta as $key => $type ) {
 		register_post_meta(
 			'equipo',
@@ -125,6 +153,21 @@ function liga_register_post_meta_fields() {
 				'single'       => true,
 				'show_in_rest' => true,
 				'auth_callback'=> static function () {
+					return current_user_can( 'edit_posts' );
+				},
+			)
+		);
+	}
+
+	foreach ( $banner_meta as $key => $type ) {
+		register_post_meta(
+			'banner-principal',
+			$key,
+			array(
+				'type'          => $type,
+				'single'        => true,
+				'show_in_rest'  => true,
+				'auth_callback' => static function () {
 					return current_user_can( 'edit_posts' );
 				},
 			)
@@ -611,6 +654,186 @@ function liga_render_division_metabox( $post ) {
 }
 
 /**
+ * Render metabox de banner principal.
+ *
+ * @param WP_Post $post Post actual.
+ * @return void
+ */
+function liga_render_banner_principal_metabox( $post ) {
+	wp_nonce_field( 'liga_save_banner_principal_meta', 'liga_banner_principal_nonce' );
+
+	$primary_image_id = (int) get_post_meta( $post->ID, '_liga_banner_image_id', true );
+	$legacy_image_id  = (int) get_post_meta( $post->ID, 'liga_banner_imagen_id', true );
+	$image_id         = $primary_image_id > 0 ? $primary_image_id : $legacy_image_id;
+
+	$fields = array(
+		'liga_banner_eyebrow'              => get_post_meta( $post->ID, 'liga_banner_eyebrow', true ),
+		'liga_banner_titulo'               => get_post_meta( $post->ID, 'liga_banner_titulo', true ),
+		'liga_banner_bajada'               => get_post_meta( $post->ID, 'liga_banner_bajada', true ),
+		'liga_banner_cta_principal_texto'  => get_post_meta( $post->ID, 'liga_banner_cta_principal_texto', true ),
+		'liga_banner_cta_principal_url'    => get_post_meta( $post->ID, 'liga_banner_cta_principal_url', true ),
+		'liga_banner_cta_secundario_texto' => get_post_meta( $post->ID, 'liga_banner_cta_secundario_texto', true ),
+		'liga_banner_cta_secundario_url'   => get_post_meta( $post->ID, 'liga_banner_cta_secundario_url', true ),
+		'liga_banner_imagen_id'            => $image_id,
+		'liga_banner_activo'               => get_post_meta( $post->ID, 'liga_banner_activo', true ),
+		'liga_banner_orden_visual'         => get_post_meta( $post->ID, 'liga_banner_orden_visual', true ),
+		'liga_banner_alineacion_texto'     => get_post_meta( $post->ID, 'liga_banner_alineacion_texto', true ),
+		'liga_banner_altura'               => get_post_meta( $post->ID, 'liga_banner_altura', true ),
+		'liga_banner_overlay'              => get_post_meta( $post->ID, 'liga_banner_overlay', true ),
+		'liga_banner_fondo_degradado'      => get_post_meta( $post->ID, 'liga_banner_fondo_degradado', true ),
+		'liga_banner_autoplay'             => get_post_meta( $post->ID, 'liga_banner_autoplay', true ),
+	);
+
+	$text_align = in_array( (string) $fields['liga_banner_alineacion_texto'], array( 'izquierda', 'centro', 'derecha' ), true ) ? (string) $fields['liga_banner_alineacion_texto'] : 'izquierda';
+	$height     = in_array( (string) $fields['liga_banner_altura'], array( 'compacta', 'normal', 'amplia' ), true ) ? (string) $fields['liga_banner_altura'] : 'normal';
+	if ( '' === (string) $fields['liga_banner_overlay'] ) {
+		$fields['liga_banner_overlay'] = 1;
+	}
+	if ( '' === (string) $fields['liga_banner_fondo_degradado'] ) {
+		$fields['liga_banner_fondo_degradado'] = 1;
+	}
+	if ( '' === (string) $fields['liga_banner_autoplay'] ) {
+		$fields['liga_banner_autoplay'] = 1;
+	}
+
+	if ( '' === trim( (string) $fields['liga_banner_titulo'] ) ) {
+		$fields['liga_banner_titulo'] = get_the_title( $post->ID );
+	}
+	$has_image = $image_id > 0 && wp_attachment_is_image( $image_id );
+	if ( ! $has_image ) {
+		$image_id = 0;
+	}
+	?>
+	<table class="form-table" role="presentation">
+		<tr>
+			<th><label for="liga_banner_eyebrow"><?php esc_html_e( 'Eyebrow / etiqueta superior', 'liga-basket-chile' ); ?></label></th>
+			<td><input type="text" class="regular-text" id="liga_banner_eyebrow" name="liga_banner_eyebrow" value="<?php echo esc_attr( (string) $fields['liga_banner_eyebrow'] ); ?>"></td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_titulo"><?php esc_html_e( 'Titulo principal', 'liga-basket-chile' ); ?></label></th>
+			<td>
+				<input type="text" class="large-text" id="liga_banner_titulo" name="liga_banner_titulo" value="<?php echo esc_attr( (string) $fields['liga_banner_titulo'] ); ?>">
+				<p class="description"><?php esc_html_e( 'Este titulo se usa en el hero y se sincroniza con el titulo del post para facilitar la administracion.', 'liga-basket-chile' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_bajada"><?php esc_html_e( 'Bajada', 'liga-basket-chile' ); ?></label></th>
+			<td>
+				<textarea id="liga_banner_bajada" name="liga_banner_bajada" class="large-text" rows="3"><?php echo esc_textarea( (string) $fields['liga_banner_bajada'] ); ?></textarea>
+				<p class="description"><?php esc_html_e( 'Texto corto que aparece debajo del titulo principal.', 'liga-basket-chile' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_cta_principal_texto"><?php esc_html_e( 'Texto CTA principal', 'liga-basket-chile' ); ?></label></th>
+			<td><input type="text" class="regular-text" id="liga_banner_cta_principal_texto" name="liga_banner_cta_principal_texto" value="<?php echo esc_attr( (string) $fields['liga_banner_cta_principal_texto'] ); ?>"></td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_cta_principal_url"><?php esc_html_e( 'URL CTA principal', 'liga-basket-chile' ); ?></label></th>
+			<td><input type="url" class="regular-text" id="liga_banner_cta_principal_url" name="liga_banner_cta_principal_url" value="<?php echo esc_attr( (string) $fields['liga_banner_cta_principal_url'] ); ?>"></td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_cta_secundario_texto"><?php esc_html_e( 'Texto CTA secundario', 'liga-basket-chile' ); ?></label></th>
+			<td><input type="text" class="regular-text" id="liga_banner_cta_secundario_texto" name="liga_banner_cta_secundario_texto" value="<?php echo esc_attr( (string) $fields['liga_banner_cta_secundario_texto'] ); ?>"></td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_cta_secundario_url"><?php esc_html_e( 'URL CTA secundario', 'liga-basket-chile' ); ?></label></th>
+			<td><input type="url" class="regular-text" id="liga_banner_cta_secundario_url" name="liga_banner_cta_secundario_url" value="<?php echo esc_attr( (string) $fields['liga_banner_cta_secundario_url'] ); ?>"></td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_image_id"><?php esc_html_e( 'Imagen del banner', 'liga-basket-chile' ); ?></label></th>
+			<td>
+				<div
+					class="liga-banner-media-field"
+					data-liga-banner-media
+					data-select-label="<?php echo esc_attr__( 'Seleccionar imagen', 'liga-basket-chile' ); ?>"
+					data-change-label="<?php echo esc_attr__( 'Cambiar imagen', 'liga-basket-chile' ); ?>"
+					data-remove-label="<?php echo esc_attr__( 'Eliminar imagen', 'liga-basket-chile' ); ?>"
+					data-modal-title="<?php echo esc_attr__( 'Seleccionar imagen del banner', 'liga-basket-chile' ); ?>"
+					data-modal-button="<?php echo esc_attr__( 'Usar esta imagen', 'liga-basket-chile' ); ?>"
+					data-empty-text="<?php echo esc_attr__( 'No hay imagen seleccionada.', 'liga-basket-chile' ); ?>"
+				>
+					<div class="liga-banner-media-field__preview" data-liga-banner-preview>
+						<?php if ( $has_image ) : ?>
+							<?php
+							echo wp_kses_post(
+								wp_get_attachment_image(
+									$image_id,
+									'medium',
+									false,
+									array(
+										'class'   => 'liga-banner-media-field__preview-image',
+										'loading' => 'lazy',
+									)
+								)
+							);
+							?>
+						<?php else : ?>
+							<p class="liga-banner-media-field__empty"><?php esc_html_e( 'No hay imagen seleccionada.', 'liga-basket-chile' ); ?></p>
+						<?php endif; ?>
+					</div>
+
+					<input type="hidden" id="liga_banner_image_id" name="_liga_banner_image_id" value="<?php echo esc_attr( (string) $image_id ); ?>">
+
+					<div class="liga-banner-media-field__actions">
+						<button type="button" class="button liga-banner-media-field__select" data-liga-banner-select>
+							<?php echo $has_image ? esc_html__( 'Cambiar imagen', 'liga-basket-chile' ) : esc_html__( 'Seleccionar imagen', 'liga-basket-chile' ); ?>
+						</button>
+						<button type="button" class="button button-link-delete liga-banner-media-field__remove<?php echo $has_image ? '' : ' is-hidden'; ?>" data-liga-banner-remove>
+							<?php esc_html_e( 'Eliminar imagen', 'liga-basket-chile' ); ?>
+						</button>
+					</div>
+				</div>
+				<p class="description"><?php esc_html_e( 'Selecciona una imagen rectangular recomendada en formato 16:9.', 'liga-basket-chile' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_orden_visual"><?php esc_html_e( 'Orden visual', 'liga-basket-chile' ); ?></label></th>
+			<td><input type="number" class="small-text" id="liga_banner_orden_visual" name="liga_banner_orden_visual" min="0" value="<?php echo esc_attr( (string) $fields['liga_banner_orden_visual'] ); ?>"></td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_alineacion_texto"><?php esc_html_e( 'Alineacion de texto', 'liga-basket-chile' ); ?></label></th>
+			<td>
+				<select id="liga_banner_alineacion_texto" name="liga_banner_alineacion_texto">
+					<option value="izquierda" <?php selected( $text_align, 'izquierda' ); ?>><?php esc_html_e( 'Izquierda', 'liga-basket-chile' ); ?></option>
+					<option value="centro" <?php selected( $text_align, 'centro' ); ?>><?php esc_html_e( 'Centro', 'liga-basket-chile' ); ?></option>
+					<option value="derecha" <?php selected( $text_align, 'derecha' ); ?>><?php esc_html_e( 'Derecha', 'liga-basket-chile' ); ?></option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<th><label for="liga_banner_altura"><?php esc_html_e( 'Altura del banner', 'liga-basket-chile' ); ?></label></th>
+			<td>
+				<select id="liga_banner_altura" name="liga_banner_altura">
+					<option value="compacta" <?php selected( $height, 'compacta' ); ?>><?php esc_html_e( 'Compacta', 'liga-basket-chile' ); ?></option>
+					<option value="normal" <?php selected( $height, 'normal' ); ?>><?php esc_html_e( 'Normal', 'liga-basket-chile' ); ?></option>
+					<option value="amplia" <?php selected( $height, 'amplia' ); ?>><?php esc_html_e( 'Amplia', 'liga-basket-chile' ); ?></option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Estado', 'liga-basket-chile' ); ?></th>
+			<td><label><input type="checkbox" name="liga_banner_activo" value="1" <?php checked( (int) $fields['liga_banner_activo'], 1 ); ?>> <?php esc_html_e( 'Banner activo', 'liga-basket-chile' ); ?></label></td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Autoplay slider', 'liga-basket-chile' ); ?></th>
+			<td>
+				<label><input type="checkbox" name="liga_banner_autoplay" value="1" <?php checked( (int) $fields['liga_banner_autoplay'], 1 ); ?>> <?php esc_html_e( 'Activar cambio automatico cada 5 segundos', 'liga-basket-chile' ); ?></label>
+				<p class="description"><?php esc_html_e( 'Si hay multiples banners activos, se usa el valor del banner con mayor prioridad (orden visual y fecha).', 'liga-basket-chile' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Overlay imagen', 'liga-basket-chile' ); ?></th>
+			<td><label><input type="checkbox" name="liga_banner_overlay" value="1" <?php checked( (int) $fields['liga_banner_overlay'], 1 ); ?>> <?php esc_html_e( 'Activar overlay sobre la imagen', 'liga-basket-chile' ); ?></label></td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Fondo degradado', 'liga-basket-chile' ); ?></th>
+			<td><label><input type="checkbox" name="liga_banner_fondo_degradado" value="1" <?php checked( (int) $fields['liga_banner_fondo_degradado'], 1 ); ?>> <?php esc_html_e( 'Activar fondo degradado del slide', 'liga-basket-chile' ); ?></label></td>
+		</tr>
+	</table>
+	<?php
+}
+
+/**
  * Guarda metadatos del equipo.
  *
  * @param int $post_id ID del post.
@@ -870,3 +1093,141 @@ function liga_save_division_meta( $post_id ) {
 	}
 }
 add_action( 'save_post_division', 'liga_save_division_meta' );
+
+/**
+ * Guarda metadatos de banner principal.
+ *
+ * @param int $post_id ID del post.
+ * @return void
+ */
+function liga_save_banner_principal_meta( $post_id ) {
+	if ( ! isset( $_POST['liga_banner_principal_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['liga_banner_principal_nonce'] ) ), 'liga_save_banner_principal_meta' ) ) {
+		return;
+	}
+
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		return;
+	}
+
+	$allowed_align = array( 'izquierda', 'centro', 'derecha' );
+	$allowed_height = array( 'compacta', 'normal', 'amplia' );
+	$image_id = 0;
+
+	if ( isset( $_POST['_liga_banner_image_id'] ) ) {
+		$image_id = absint( wp_unslash( $_POST['_liga_banner_image_id'] ) );
+	} elseif ( isset( $_POST['liga_banner_imagen_id'] ) ) {
+		// Compatibilidad con versiones anteriores.
+		$image_id = absint( wp_unslash( $_POST['liga_banner_imagen_id'] ) );
+	}
+
+	$title = isset( $_POST['liga_banner_titulo'] ) ? sanitize_text_field( wp_unslash( $_POST['liga_banner_titulo'] ) ) : '';
+	if ( '' === trim( $title ) ) {
+		$title = sanitize_text_field( get_the_title( $post_id ) );
+	}
+
+	$data = array(
+		'liga_banner_eyebrow'              => isset( $_POST['liga_banner_eyebrow'] ) ? sanitize_text_field( wp_unslash( $_POST['liga_banner_eyebrow'] ) ) : '',
+		'liga_banner_titulo'               => $title,
+		'liga_banner_bajada'               => isset( $_POST['liga_banner_bajada'] ) ? sanitize_textarea_field( wp_unslash( $_POST['liga_banner_bajada'] ) ) : '',
+		'liga_banner_cta_principal_texto'  => isset( $_POST['liga_banner_cta_principal_texto'] ) ? sanitize_text_field( wp_unslash( $_POST['liga_banner_cta_principal_texto'] ) ) : '',
+		'liga_banner_cta_principal_url'    => isset( $_POST['liga_banner_cta_principal_url'] ) ? esc_url_raw( wp_unslash( $_POST['liga_banner_cta_principal_url'] ) ) : '',
+		'liga_banner_cta_secundario_texto' => isset( $_POST['liga_banner_cta_secundario_texto'] ) ? sanitize_text_field( wp_unslash( $_POST['liga_banner_cta_secundario_texto'] ) ) : '',
+		'liga_banner_cta_secundario_url'   => isset( $_POST['liga_banner_cta_secundario_url'] ) ? esc_url_raw( wp_unslash( $_POST['liga_banner_cta_secundario_url'] ) ) : '',
+		'_liga_banner_image_id'            => $image_id,
+		'liga_banner_imagen_id'            => $image_id,
+		'liga_banner_activo'               => liga_sanitize_checkbox( isset( $_POST['liga_banner_activo'] ) ? wp_unslash( $_POST['liga_banner_activo'] ) : 0 ),
+		'liga_banner_orden_visual'         => isset( $_POST['liga_banner_orden_visual'] ) ? absint( wp_unslash( $_POST['liga_banner_orden_visual'] ) ) : 0,
+		'liga_banner_alineacion_texto'     => isset( $_POST['liga_banner_alineacion_texto'] ) ? sanitize_key( wp_unslash( $_POST['liga_banner_alineacion_texto'] ) ) : 'izquierda',
+		'liga_banner_altura'               => isset( $_POST['liga_banner_altura'] ) ? sanitize_key( wp_unslash( $_POST['liga_banner_altura'] ) ) : 'normal',
+		'liga_banner_overlay'              => liga_sanitize_checkbox( isset( $_POST['liga_banner_overlay'] ) ? wp_unslash( $_POST['liga_banner_overlay'] ) : 0 ),
+		'liga_banner_fondo_degradado'      => liga_sanitize_checkbox( isset( $_POST['liga_banner_fondo_degradado'] ) ? wp_unslash( $_POST['liga_banner_fondo_degradado'] ) : 0 ),
+		'liga_banner_autoplay'             => liga_sanitize_checkbox( isset( $_POST['liga_banner_autoplay'] ) ? wp_unslash( $_POST['liga_banner_autoplay'] ) : 0 ),
+	);
+
+	if ( ! in_array( $data['liga_banner_alineacion_texto'], $allowed_align, true ) ) {
+		$data['liga_banner_alineacion_texto'] = 'izquierda';
+	}
+
+	if ( ! in_array( $data['liga_banner_altura'], $allowed_height, true ) ) {
+		$data['liga_banner_altura'] = 'normal';
+	}
+
+	foreach ( $data as $key => $value ) {
+		update_post_meta( $post_id, $key, $value );
+	}
+
+	if ( '' !== $title ) {
+		remove_action( 'save_post_banner-principal', 'liga_save_banner_principal_meta' );
+		wp_update_post(
+			array(
+				'ID'         => (int) $post_id,
+				'post_title' => $title,
+			)
+		);
+		add_action( 'save_post_banner-principal', 'liga_save_banner_principal_meta' );
+	}
+
+	if ( function_exists( 'liga_flush_home_banner_cache' ) ) {
+		liga_flush_home_banner_cache();
+	}
+}
+add_action( 'save_post_banner-principal', 'liga_save_banner_principal_meta' );
+
+/**
+ * Encola assets admin del selector de imagen en Banner Principal.
+ *
+ * @param string $hook_suffix Pantalla admin actual.
+ * @return void
+ */
+function liga_enqueue_banner_principal_admin_media_assets( $hook_suffix ) {
+	if ( ! in_array( $hook_suffix, array( 'post.php', 'post-new.php' ), true ) ) {
+		return;
+	}
+
+	$screen = get_current_screen();
+	if ( ! $screen || 'banner-principal' !== $screen->post_type ) {
+		return;
+	}
+
+	wp_enqueue_media();
+
+	wp_enqueue_style(
+		'liga-admin-banner-media',
+		get_template_directory_uri() . '/assets/css/admin.css',
+		array(),
+		liga_asset_version( 'assets/css/admin.css' )
+	);
+
+	wp_enqueue_script(
+		'liga-admin-banner-media',
+		get_template_directory_uri() . '/assets/js/admin-banner-media.js',
+		array( 'media-editor' ),
+		liga_asset_version( 'assets/js/admin-banner-media.js' ),
+		true
+	);
+}
+add_action( 'admin_enqueue_scripts', 'liga_enqueue_banner_principal_admin_media_assets' );
+
+/**
+ * Limpia cache del hero al mover/eliminar banners.
+ *
+ * @param int $post_id ID del post afectado.
+ * @return void
+ */
+function liga_flush_home_banner_cache_on_banner_post_change( $post_id ) {
+	$post_id = absint( $post_id );
+	if ( $post_id <= 0 || 'banner-principal' !== get_post_type( $post_id ) ) {
+		return;
+	}
+
+	if ( function_exists( 'liga_flush_home_banner_cache' ) ) {
+		liga_flush_home_banner_cache();
+	}
+}
+add_action( 'trashed_post', 'liga_flush_home_banner_cache_on_banner_post_change' );
+add_action( 'untrashed_post', 'liga_flush_home_banner_cache_on_banner_post_change' );
+add_action( 'before_delete_post', 'liga_flush_home_banner_cache_on_banner_post_change' );

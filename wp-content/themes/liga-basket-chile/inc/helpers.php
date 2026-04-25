@@ -626,3 +626,292 @@ function liga_fallback_secondary_menu() {
 	echo '<li><a href="' . esc_url( home_url( '/sponsors' ) ) . '">' . esc_html__( 'Sponsors', 'liga-basket-chile' ) . '</a></li>';
 	echo '</ul>';
 }
+
+/**
+ * Limpia cache del hero principal.
+ *
+ * @return void
+ */
+function liga_flush_home_banner_cache() {
+	delete_transient( 'liga_home_active_banner_ids_v1' );
+}
+
+/**
+ * Resuelve IDs de banners activos ordenados por prioridad.
+ *
+ * Orden:
+ * - mayor orden visual
+ * - mas reciente
+ *
+ * @return array<int, int>
+ */
+function liga_get_home_active_banner_ids() {
+	$cached = get_transient( 'liga_home_active_banner_ids_v1' );
+	if ( is_array( $cached ) ) {
+		return array_map( 'absint', $cached );
+	}
+
+	$query = new WP_Query(
+		array(
+			'post_type'              => 'banner-principal',
+			'post_status'            => 'publish',
+			'fields'                 => 'ids',
+			'posts_per_page'         => -1,
+			'no_found_rows'          => true,
+			'ignore_sticky_posts'    => true,
+			'update_post_term_cache' => false,
+			'update_post_meta_cache' => false,
+			'meta_query'             => array(
+				array(
+					'key'     => 'liga_banner_activo',
+					'value'   => 1,
+					'compare' => '=',
+					'type'    => 'NUMERIC',
+				),
+			),
+			'meta_key'               => 'liga_banner_orden_visual',
+			'orderby'                => array(
+				'meta_value_num' => 'DESC',
+				'date'           => 'DESC',
+			),
+		)
+	);
+
+	$ids = array_map( 'absint', (array) $query->posts );
+	set_transient( 'liga_home_active_banner_ids_v1', $ids, 10 * MINUTE_IN_SECONDS );
+
+	return $ids;
+}
+
+/**
+ * Divide titulo en dos lineas opcionales.
+ *
+ * @param string $title Titulo de entrada.
+ * @return array{line_one:string,line_two:string}
+ */
+function liga_split_hero_title_lines( $title ) {
+	$title = trim( sanitize_text_field( (string) $title ) );
+	if ( '' === $title ) {
+		return array(
+			'line_one' => '',
+			'line_two' => '',
+		);
+	}
+
+	if ( false !== strpos( $title, '|' ) ) {
+		$parts = array_map( 'trim', explode( '|', $title, 2 ) );
+		return array(
+			'line_one' => sanitize_text_field( (string) $parts[0] ),
+			'line_two' => isset( $parts[1] ) ? sanitize_text_field( (string) $parts[1] ) : '',
+		);
+	}
+
+	return array(
+		'line_one' => $title,
+		'line_two' => '',
+	);
+}
+
+/**
+ * Obtiene ID de imagen del banner con prioridad de meta nueva.
+ *
+ * @param int $banner_id ID del banner principal.
+ * @return int
+ */
+function liga_get_banner_principal_image_id( $banner_id ) {
+	$banner_id = absint( $banner_id );
+	if ( $banner_id <= 0 ) {
+		return 0;
+	}
+
+	$primary_image_id = (int) get_post_meta( $banner_id, '_liga_banner_image_id', true );
+	$legacy_image_id  = (int) get_post_meta( $banner_id, 'liga_banner_imagen_id', true );
+	$image_id         = $primary_image_id > 0 ? $primary_image_id : $legacy_image_id;
+
+	if ( $image_id <= 0 || ! wp_attachment_is_image( $image_id ) ) {
+		return 0;
+	}
+
+	return $image_id;
+}
+
+/**
+ * Recupera una URL legacy de imagen si el banner no tiene attachment ID.
+ *
+ * @param int $banner_id ID del banner principal.
+ * @return string
+ */
+function liga_get_banner_principal_legacy_image_url( $banner_id ) {
+	$banner_id = absint( $banner_id );
+	if ( $banner_id <= 0 ) {
+		return '';
+	}
+
+	$candidate_keys = array(
+		'liga_banner_imagen_url',
+		'liga_banner_image_url',
+		'_liga_banner_image_url',
+	);
+
+	foreach ( $candidate_keys as $meta_key ) {
+		$meta_value = trim( (string) get_post_meta( $banner_id, $meta_key, true ) );
+		if ( '' === $meta_value ) {
+			continue;
+		}
+
+		$url = esc_url_raw( $meta_value );
+		if ( '' !== $url ) {
+			return $url;
+		}
+	}
+
+	return '';
+}
+
+/**
+ * Retorna payload del hero principal con soporte para slider multiple.
+ *
+ * @return array<string, mixed>
+ */
+function liga_get_home_hero_banner_data() {
+	$fallback_title_line_one = sanitize_text_field( (string) get_theme_mod( 'liga_hero_line_one', 'Se vive el basquet' ) );
+	$fallback_title_line_two = sanitize_text_field( (string) get_theme_mod( 'liga_hero_line_two', 'Se vive Concepcion' ) );
+	$fallback_title          = trim( $fallback_title_line_one . ' ' . $fallback_title_line_two );
+	$fallback_image          = get_theme_mod( 'liga_hero_image', '' );
+	if ( empty( $fallback_image ) ) {
+		$fallback_image = liga_svg_placeholder( 'Liga Concepcion', 1440, 900, '071c46', 'f7931e' );
+	}
+
+	$fallback_slide = array(
+		'eyebrow'             => sanitize_text_field( (string) get_theme_mod( 'liga_hero_eyebrow', 'Temporada Regular 2025' ) ),
+		'title'               => sanitize_text_field( '' !== $fallback_title ? $fallback_title : 'Se vive el basquet Se vive Concepcion' ),
+		'title_line_one'      => '' !== $fallback_title_line_one ? $fallback_title_line_one : 'Se vive el basquet',
+		'title_line_two'      => $fallback_title_line_two,
+		'description'         => sanitize_textarea_field( (string) get_theme_mod( 'liga_hero_description', 'La mejor liga del sur de Chile. Talento, esfuerzo y pasion en cada partido.' ) ),
+		'cta_primary_label'   => sanitize_text_field( (string) get_theme_mod( 'liga_hero_cta_one_label', 'Ver partidos' ) ),
+		'cta_primary_url'     => esc_url_raw( (string) get_theme_mod( 'liga_hero_cta_one_url', home_url( '/partidos/' ) ) ),
+		'cta_secondary_label' => sanitize_text_field( (string) get_theme_mod( 'liga_hero_cta_two_label', 'Conoce la liga' ) ),
+		'cta_secondary_url'   => esc_url_raw( (string) get_theme_mod( 'liga_hero_cta_two_url', home_url( '/la-liga/' ) ) ),
+		'image_id'            => 0,
+		'image_src'           => $fallback_image,
+		'image_alt'           => __( 'Jugador de basquetbol en accion durante un partido de liga', 'liga-basket-chile' ),
+		'text_align'          => 'left',
+		'height'              => 'normal',
+		'overlay'             => 1,
+		'gradient'            => 1,
+		'autoplay'            => 1,
+	);
+
+	$active_banner_ids = liga_get_home_active_banner_ids();
+	if ( empty( $active_banner_ids ) ) {
+		return array(
+			'slides'            => array( $fallback_slide ),
+			'is_slider'         => false,
+			'show_controls'     => false,
+			'autoplay'          => true,
+			'autoplay_interval' => 5000,
+		);
+	}
+
+	$align_map = array(
+		'izquierda' => 'left',
+		'centro'    => 'center',
+		'derecha'   => 'right',
+	);
+	$height_map = array(
+		'compacta' => 'compact',
+		'normal'   => 'normal',
+		'amplia'   => 'wide',
+	);
+
+	$slides = array();
+	foreach ( $active_banner_ids as $banner_id ) {
+		$raw_title = trim( sanitize_text_field( (string) get_post_meta( $banner_id, 'liga_banner_titulo', true ) ) );
+		if ( '' === $raw_title ) {
+			$raw_title = trim( sanitize_text_field( get_the_title( $banner_id ) ) );
+		}
+		if ( '' === $raw_title ) {
+			$raw_title = (string) $fallback_slide['title'];
+		}
+
+		$title_lines = liga_split_hero_title_lines( $raw_title );
+		if ( '' === $title_lines['line_one'] ) {
+			$title_lines['line_one'] = (string) $fallback_slide['title_line_one'];
+		}
+
+		$align_raw = sanitize_key( (string) get_post_meta( $banner_id, 'liga_banner_alineacion_texto', true ) );
+		$height_raw = sanitize_key( (string) get_post_meta( $banner_id, 'liga_banner_altura', true ) );
+		$overlay_raw = get_post_meta( $banner_id, 'liga_banner_overlay', true );
+		$gradient_raw = get_post_meta( $banner_id, 'liga_banner_fondo_degradado', true );
+		$autoplay_raw = get_post_meta( $banner_id, 'liga_banner_autoplay', true );
+
+		$image_id = liga_get_banner_principal_image_id( $banner_id );
+		$image_src = (string) $fallback_slide['image_src'];
+		if ( $image_id <= 0 ) {
+			$legacy_image_url = liga_get_banner_principal_legacy_image_url( $banner_id );
+			if ( '' !== $legacy_image_url ) {
+				$image_src = $legacy_image_url;
+			}
+		}
+
+		$image_alt = trim( sanitize_text_field( (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true ) ) );
+		if ( '' === $image_alt ) {
+			$image_alt = $raw_title;
+		}
+		if ( '' === $image_alt ) {
+			$image_alt = (string) $fallback_slide['image_alt'];
+		}
+
+		$slides[] = array(
+			'eyebrow'             => trim( sanitize_text_field( (string) get_post_meta( $banner_id, 'liga_banner_eyebrow', true ) ) ),
+			'title'               => $raw_title,
+			'title_line_one'      => $title_lines['line_one'],
+			'title_line_two'      => $title_lines['line_two'],
+			'description'         => trim( sanitize_textarea_field( (string) get_post_meta( $banner_id, 'liga_banner_bajada', true ) ) ),
+			'cta_primary_label'   => trim( sanitize_text_field( (string) get_post_meta( $banner_id, 'liga_banner_cta_principal_texto', true ) ) ),
+			'cta_primary_url'     => trim( esc_url_raw( (string) get_post_meta( $banner_id, 'liga_banner_cta_principal_url', true ) ) ),
+			'cta_secondary_label' => trim( sanitize_text_field( (string) get_post_meta( $banner_id, 'liga_banner_cta_secundario_texto', true ) ) ),
+			'cta_secondary_url'   => trim( esc_url_raw( (string) get_post_meta( $banner_id, 'liga_banner_cta_secundario_url', true ) ) ),
+			'image_id'            => $image_id,
+			'image_src'           => $image_src,
+			'image_alt'           => $image_alt,
+			'text_align'          => isset( $align_map[ $align_raw ] ) ? $align_map[ $align_raw ] : 'left',
+			'height'              => isset( $height_map[ $height_raw ] ) ? $height_map[ $height_raw ] : 'normal',
+			'overlay'             => '' === (string) $overlay_raw ? true : 1 === (int) $overlay_raw,
+			'gradient'            => '' === (string) $gradient_raw ? true : 1 === (int) $gradient_raw,
+			'autoplay'            => '' === (string) $autoplay_raw ? true : 1 === (int) $autoplay_raw,
+		);
+	}
+
+	foreach ( $slides as $index => $slide ) {
+		if ( '' === $slide['eyebrow'] ) {
+			$slides[ $index ]['eyebrow'] = (string) $fallback_slide['eyebrow'];
+		}
+		if ( '' === $slide['description'] ) {
+			$slides[ $index ]['description'] = (string) $fallback_slide['description'];
+		}
+		if ( '' === $slide['cta_primary_label'] ) {
+			$slides[ $index ]['cta_primary_label'] = (string) $fallback_slide['cta_primary_label'];
+		}
+		if ( '' === $slide['cta_primary_url'] ) {
+			$slides[ $index ]['cta_primary_url'] = (string) $fallback_slide['cta_primary_url'];
+		}
+		if ( '' === $slide['cta_secondary_label'] ) {
+			$slides[ $index ]['cta_secondary_label'] = (string) $fallback_slide['cta_secondary_label'];
+		}
+		if ( '' === $slide['cta_secondary_url'] ) {
+			$slides[ $index ]['cta_secondary_url'] = (string) $fallback_slide['cta_secondary_url'];
+		}
+	}
+
+	$slide_count = count( $slides );
+	$is_slider   = $slide_count > 1;
+
+	return array(
+		'slides'            => $slides,
+		'is_slider'         => $is_slider,
+		'show_controls'     => $is_slider,
+		'autoplay'          => $is_slider ? (bool) $slides[0]['autoplay'] : false,
+		'autoplay_interval' => 5000,
+	);
+}

@@ -55,6 +55,8 @@ function liga_theme_setup() {
 	register_nav_menus(
 		array(
 			'primary'   => __( 'Menu principal', 'liga-basket-chile' ),
+			'menu_principal' => __( 'Menú Principal', 'liga-basket-chile' ),
+			'liga_topbar_menu' => __( 'Menú Topbar', 'liga-basket-chile' ),
 			'footer'    => __( 'Menu footer', 'liga-basket-chile' ),
 			'secondary' => __( 'Menu La Liga', 'liga-basket-chile' ),
 			'legal'     => __( 'Menu legal', 'liga-basket-chile' ),
@@ -62,6 +64,31 @@ function liga_theme_setup() {
 	);
 }
 add_action( 'after_setup_theme', 'liga_theme_setup' );
+
+/**
+ * Migra asignacion legacy `primary` hacia `menu_principal` una sola vez.
+ *
+ * @return void
+ */
+function liga_migrate_primary_menu_location_once() {
+	if ( ! is_admin() || ! current_user_can( 'edit_theme_options' ) ) {
+		return;
+	}
+
+	$migrated = (int) get_option( 'liga_menu_principal_migrated', 0 );
+	if ( $migrated > 0 ) {
+		return;
+	}
+
+	$locations = (array) get_theme_mod( 'nav_menu_locations', array() );
+	if ( empty( $locations['menu_principal'] ) && ! empty( $locations['primary'] ) ) {
+		$locations['menu_principal'] = (int) $locations['primary'];
+		set_theme_mod( 'nav_menu_locations', $locations );
+	}
+
+	update_option( 'liga_menu_principal_migrated', 1 );
+}
+add_action( 'admin_init', 'liga_migrate_primary_menu_location_once' );
 
 /**
  * Enqueue frontend assets.
@@ -146,12 +173,22 @@ function liga_escape_image_src( $src ) {
 function liga_primary_menu_fallback() {
 	echo '<ul class="liga-header-nav-list">';
 	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/' ) ) . '">' . esc_html__( 'Inicio', 'liga-basket-chile' ) . '</a></li>';
-	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/posiciones' ) ) . '">' . esc_html__( 'Posiciones', 'liga-basket-chile' ) . '</a></li>';
+	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/tabla' ) ) . '">' . esc_html__( 'Tabla de Posiciones', 'liga-basket-chile' ) . '</a></li>';
 	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/partidos' ) ) . '">' . esc_html__( 'Partidos', 'liga-basket-chile' ) . '</a></li>';
 	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/equipos' ) ) . '">' . esc_html__( 'Equipos', 'liga-basket-chile' ) . '</a></li>';
 	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/noticias' ) ) . '">' . esc_html__( 'Noticias', 'liga-basket-chile' ) . '</a></li>';
 	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/la-liga' ) ) . '">' . esc_html__( 'La Liga', 'liga-basket-chile' ) . '</a></li>';
+	echo '<li class="liga-header-nav-item"><a class="liga-header-nav-link" href="' . esc_url( home_url( '/contacto' ) ) . '">' . esc_html__( 'Contacto', 'liga-basket-chile' ) . '</a></li>';
 	echo '</ul>';
+}
+
+/**
+ * Fallback menu for topbar navigation.
+ *
+ * @return void
+ */
+function liga_topbar_menu_fallback() {
+	echo '<ul class="liga-topbar-social-list liga-topbar__menu liga-topbar__menu--fallback"></ul>';
 }
 
 /**
@@ -212,7 +249,12 @@ function liga_nav_menu_link_attributes( $atts, $item, $args ) {
 
 	switch ( $args->theme_location ) {
 		case 'primary':
+		case 'menu_principal':
 			$classes[] = 'liga-header-nav-link';
+			break;
+		case 'liga_topbar_menu':
+			$classes[] = 'liga-topbar-social-link';
+			$classes[] = 'liga-topbar__link';
 			break;
 		case 'footer':
 			$classes[] = 'liga-footer-nav-link';
@@ -249,7 +291,12 @@ function liga_nav_menu_item_classes( $classes, $item, $args ) {
 
 	switch ( $args->theme_location ) {
 		case 'primary':
+		case 'menu_principal':
 			$classes[] = 'liga-header-nav-item';
+			break;
+		case 'liga_topbar_menu':
+			$classes[] = 'liga-topbar-social-item';
+			$classes[] = 'liga-topbar__item';
 			break;
 		case 'footer':
 			$classes[] = 'liga-footer-nav-item';
@@ -287,6 +334,7 @@ function liga_bootstrap_inc_modules() {
 			'inc/import-equipos.php',
 			'inc/import-partidos.php',
 			'inc/api-endpoints.php',
+			'inc/topbar-menu-icons.php',
 			'inc/datos-demo.php',
 		);
 
