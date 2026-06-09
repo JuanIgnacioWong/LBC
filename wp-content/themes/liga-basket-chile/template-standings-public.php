@@ -15,31 +15,6 @@ $context = function_exists( 'liga_get_public_standings_request_context' )
 
 $is_valid = ! empty( $context['is_valid'] );
 
-$build_team_short_name = static function ( $team_name ) {
-	$normalized = strtoupper( remove_accents( wp_strip_all_tags( (string) $team_name ) ) );
-	$tokens     = preg_split( '/\s+/', $normalized, -1, PREG_SPLIT_NO_EMPTY );
-	$abbr       = '';
-
-	foreach ( (array) $tokens as $token ) {
-		$clean_token = preg_replace( '/[^A-Z0-9]/', '', (string) $token );
-		if ( '' === $clean_token ) {
-			continue;
-		}
-
-		$abbr .= substr( $clean_token, 0, 1 );
-		if ( strlen( $abbr ) >= 3 ) {
-			break;
-		}
-	}
-
-	if ( strlen( $abbr ) < 2 ) {
-		$fallback = preg_replace( '/[^A-Z0-9]/', '', $normalized );
-		$abbr     = substr( (string) $fallback, 0, 3 );
-	}
-
-	return '' !== $abbr ? $abbr : 'LB';
-};
-
 $get_timestamp = static function ( $raw_date, $raw_time = '' ) {
 	$date = trim( (string) $raw_date );
 	$time = trim( (string) $raw_time );
@@ -115,7 +90,7 @@ $get_match_status_label = static function ( $status_key, $incomparecencia = 'nin
 
 $team_cache = array();
 
-$get_team_data = static function ( $team_id ) use ( &$team_cache, $build_team_short_name ) {
+$get_team_data = static function ( $team_id ) use ( &$team_cache ) {
 	$team_id = absint( $team_id );
 	if ( isset( $team_cache[ $team_id ] ) ) {
 		return $team_cache[ $team_id ];
@@ -127,19 +102,9 @@ $get_team_data = static function ( $team_id ) use ( &$team_cache, $build_team_sh
 		$name      = '' !== $name_meta ? $name_meta : get_the_title( $team_id );
 	}
 
-	$logo_src = '';
-	$logo_id  = $team_id > 0 ? (int) get_post_meta( $team_id, 'liga_logo_equipo', true ) : 0;
-	if ( $logo_id > 0 ) {
-		$logo_src = (string) wp_get_attachment_image_url( $logo_id, 'thumbnail' );
-		if ( '' === $logo_src ) {
-			$logo_src = (string) wp_get_attachment_image_url( $logo_id, 'full' );
-		}
-	}
-
 	$team_cache[ $team_id ] = array(
+		'id'   => $team_id,
 		'name' => $name,
-		'abbr' => $build_team_short_name( $name ),
-		'logo' => $logo_src,
 	);
 
 	return $team_cache[ $team_id ];
@@ -316,27 +281,14 @@ get_header();
 									<?php foreach ( $standings_rows as $row_index => $row ) : ?>
 										<?php
 										$row_team_name = isset( $row['equipo'] ) ? (string) $row['equipo'] : '';
-										$row_short     = $build_team_short_name( $row_team_name );
-										$row_logo_id   = isset( $row['logo_id'] ) ? (int) $row['logo_id'] : 0;
-										$row_logo_src  = '';
-
-										if ( $row_logo_id > 0 ) {
-											$row_logo_src = (string) wp_get_attachment_image_url( $row_logo_id, 'thumbnail' );
-											if ( '' === $row_logo_src ) {
-												$row_logo_src = (string) wp_get_attachment_image_url( $row_logo_id, 'full' );
-											}
-										}
-
-										if ( '' === $row_logo_src ) {
-											$row_logo_src = liga_svg_placeholder( $row_short, 64, 64, '0b2a66', 'ffffff' );
-										}
+										$row_team_id   = isset( $row['equipo_id'] ) ? (int) $row['equipo_id'] : 0;
 										?>
 										<tr class="<?php echo 0 === $row_index ? 'liga-row--leader' : ''; ?>">
 											<th scope="row"><?php echo esc_html( isset( $row['pos'] ) ? (int) $row['pos'] : $row_index + 1 ); ?></th>
 											<td>
 												<div class="liga-standings-team">
 													<figure class="liga-table-team-logo">
-														<img src="<?php echo liga_escape_image_src( $row_logo_src ); ?>" alt="<?php echo esc_attr( sprintf( 'Logo %s', $row_team_name ) ); ?>">
+														<?php echo wp_kses_post( liga_get_team_logo_html( $row_team_id, array( 'class' => 'liga-team-logo liga-table-team-logo__image', 'size' => 'thumbnail' ) ) ); ?>
 													</figure>
 													<span class="liga-standings-team__name"><?php echo esc_html( $row_team_name ); ?></span>
 												</div>
@@ -384,10 +336,10 @@ get_header();
 											<span class="liga-result-division"><?php echo esc_html( $division_label ); ?></span>
 											<time class="liga-result-date" datetime="<?php echo esc_attr( $format_datetime_attribute( $result['fecha'], $result['hora'] ) ); ?>"><?php echo esc_html( $format_date( $result['fecha'], 'd M Y' ) ); ?></time>
 										</header>
-										<div class="liga-single-post__result-scoreline">
-											<span class="liga-single-post__result-team"><?php echo esc_html( $home_team['name'] ); ?></span>
+										<div class="liga-result-body">
+											<figure class="liga-result-team-logo"><?php echo wp_kses_post( liga_get_team_logo_html( $home_team['id'], array( 'class' => 'liga-team-logo liga-result-team-logo__image', 'size' => 'thumbnail' ) ) ); ?></figure>
 											<strong class="liga-result-score"><?php echo esc_html( sprintf( '%d - %d', (int) $result['puntos_local'], (int) $result['puntos_visita'] ) ); ?></strong>
-											<span class="liga-single-post__result-team liga-single-post__result-team--away"><?php echo esc_html( $away_team['name'] ); ?></span>
+											<figure class="liga-result-team-logo"><?php echo wp_kses_post( liga_get_team_logo_html( $away_team['id'], array( 'class' => 'liga-team-logo liga-result-team-logo__image', 'size' => 'thumbnail' ) ) ); ?></figure>
 										</div>
 										<footer class="liga-result-foot">
 											<span class="liga-result-status"><?php echo esc_html( $get_match_status_label( $result['estado'], $result['incomparecencia'] ) ); ?></span>
@@ -422,7 +374,13 @@ get_header();
 											<?php if ( '' !== $format_time( $fixture['hora'] ) ) : ?>
 												<p class="liga-fixture-time"><time datetime="<?php echo esc_attr( $format_datetime_attribute( $fixture['fecha'], $fixture['hora'] ) ); ?>"><?php echo esc_html( $format_time( $fixture['hora'] ) ); ?> HRS</time></p>
 											<?php endif; ?>
-											<p class="liga-single-post__fixture-teams"><?php echo esc_html( $home_team['name'] . ' vs ' . $away_team['name'] ); ?></p>
+											<div class="liga-fixture-teams">
+												<figure class="liga-fixture-team-logo"><?php echo wp_kses_post( liga_get_team_logo_html( $home_team['id'], array( 'class' => 'liga-team-logo liga-fixture-team-logo__image', 'size' => 'thumbnail' ) ) ); ?></figure>
+												<p class="liga-fixture-team-name"><?php echo esc_html( $home_team['name'] ); ?></p>
+												<span class="liga-fixture-versus">vs</span>
+												<p class="liga-fixture-team-name"><?php echo esc_html( $away_team['name'] ); ?></p>
+												<figure class="liga-fixture-team-logo"><?php echo wp_kses_post( liga_get_team_logo_html( $away_team['id'], array( 'class' => 'liga-team-logo liga-fixture-team-logo__image', 'size' => 'thumbnail' ) ) ); ?></figure>
+											</div>
 											<p class="liga-fixture-venue"><?php echo esc_html( '' !== $fixture['recinto'] ? (string) $fixture['recinto'] : __( 'Cancha por definir', 'liga-basket-chile' ) ); ?></p>
 										</div>
 									</article>

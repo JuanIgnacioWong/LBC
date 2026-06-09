@@ -269,6 +269,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .liga-home-main-panels .liga-standings-panel,
+  .liga-home-main-panels .liga-results-panel,
+  .liga-home-main-panels .liga-fixture-panel {
+    min-height: 0;
+  }
+
+  .liga-home-main-panels .liga-results-list,
+  .liga-home-main-panels .liga-fixture-list {
+    max-height: none;
+    overflow-y: visible;
+  }
+
   .liga-single-post__layout {
     grid-template-columns: minmax(0, 1.32fr) minmax(240px, 0.95fr);
     gap: 0.9rem;
@@ -566,10 +578,14 @@
     padding: 0.68rem;
   }
 
-  .liga-result-team-logo,
-  .liga-fixture-team-logo {
+  .liga-result-team-logo {
     width: 36px;
     height: 36px;
+  }
+
+  .liga-fixture-team-logo {
+    width: 50px;
+    height: 50px;
   }
 
   .liga-result-score {
@@ -653,6 +669,19 @@
   }
 
   .liga-partidos-archive__team-name {
+    font-size: 0.78rem;
+  }
+
+  .liga-fixture-team-logo {
+    width: 46px;
+    height: 46px;
+  }
+
+  .liga-fixture-teams {
+    column-gap: 0.48rem;
+  }
+
+  .liga-fixture-team-name {
     font-size: 0.78rem;
   }
 
@@ -849,7 +878,7 @@
   }
 
   .liga-standings-page .liga-standings-team {
-    grid-template-columns: 26px minmax(0, 1fr);
+    grid-template-columns: 30px minmax(0, 1fr);
     gap: 0.36rem;
   }
 
@@ -861,8 +890,8 @@
   }
 
   .liga-table-team-logo {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
   }
 
   .liga-result-body {
@@ -874,13 +903,15 @@
   }
 
   .liga-fixture-teams {
-    grid-template-columns: auto 1fr;
-    row-gap: 0.3rem;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    column-gap: 0.58rem;
+    row-gap: 0.36rem;
   }
 
   .liga-fixture-versus {
-    grid-column: 1 / -1;
-    justify-self: start;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    justify-self: center;
   }
 
   .liga-news-grid {

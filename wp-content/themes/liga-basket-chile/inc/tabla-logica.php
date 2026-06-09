@@ -648,7 +648,7 @@ function liga_init_equipo_stats( $equipo_id ) {
 	return array(
 		'equipo_id'         => $equipo_id,
 		'equipo'            => liga_get_equipo_nombre( $equipo_id ),
-		'logo_id'           => (int) get_post_meta( $equipo_id, 'liga_logo_equipo', true ),
+		'logo_id'           => (int) get_post_thumbnail_id( $equipo_id ),
 		'pj'                => 0,
 		'pg'                => 0,
 		'pp'                => 0,

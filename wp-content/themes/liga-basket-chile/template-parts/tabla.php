@@ -25,6 +25,8 @@ $standings_link = function_exists( 'liga_get_default_public_standings_url' ) ? l
 if ( '' === $standings_link ) {
 	$standings_link = home_url( '/posiciones' );
 }
+
+$max_visible_teams = 12;
 ?>
 <section class="liga-card liga-home-table" data-liga-reveal>
 	<header class="liga-block-head">
@@ -43,7 +45,7 @@ if ( '' === $standings_link ) {
 	<?php foreach ( $divisions as $index => $division ) : ?>
 		<?php
 		$table_data = liga_calcular_tabla_posiciones( $division->ID, $season );
-		$rows       = array_slice( $table_data['tabla'], 0, 6 );
+		$rows       = array_slice( $table_data['tabla'], 0, $max_visible_teams );
 		$leader     = ! empty( $rows ) ? $rows[0] : null;
 		?>
 		<div class="liga-tab-panel<?php echo 0 === $index ? ' is-active' : ''; ?>" data-liga-tab-panel="division-<?php echo esc_attr( (string) $division->ID ); ?>" role="tabpanel">
@@ -79,9 +81,7 @@ if ( '' === $standings_link ) {
 								<td><?php echo esc_html( (string) (int) $row['pos'] ); ?></td>
 								<td>
 									<span class="liga-team-chip">
-										<?php if ( ! empty( $row['logo_id'] ) ) : ?>
-											<?php echo wp_kses_post( wp_get_attachment_image( (int) $row['logo_id'], array( 22, 22 ), false, array( 'loading' => 'lazy' ) ) ); ?>
-										<?php endif; ?>
+										<?php echo wp_kses_post( liga_get_team_logo_html( isset( $row['equipo_id'] ) ? (int) $row['equipo_id'] : 0, array( 'class' => 'liga-team-logo liga-team-chip__logo', 'size' => array( 22, 22 ) ) ) ); ?>
 										<?php echo esc_html( (string) $row['equipo'] ); ?>
 									</span>
 								</td>

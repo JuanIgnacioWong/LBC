@@ -233,6 +233,104 @@ function liga_get_equipo_nombre( $equipo_id ) {
 }
 
 /**
+ * Construye iniciales legibles para fallback visual de equipo.
+ *
+ * @param string $team_name Nombre del equipo.
+ * @return string
+ */
+function liga_get_team_initials( $team_name ) {
+	$normalized = strtoupper( remove_accents( wp_strip_all_tags( (string) $team_name ) ) );
+	$tokens     = preg_split( '/\s+/', $normalized, -1, PREG_SPLIT_NO_EMPTY );
+	$initials   = '';
+
+	foreach ( (array) $tokens as $token ) {
+		$clean_token = preg_replace( '/[^A-Z0-9]/', '', (string) $token );
+		if ( '' === $clean_token ) {
+			continue;
+		}
+
+		$initials .= substr( $clean_token, 0, 1 );
+		if ( strlen( $initials ) >= 3 ) {
+			break;
+		}
+	}
+
+	if ( strlen( $initials ) < 2 ) {
+		$fallback = preg_replace( '/[^A-Z0-9]/', '', $normalized );
+		$initials = substr( (string) $fallback, 0, 3 );
+	}
+
+	return '' !== $initials ? $initials : 'LB';
+}
+
+/**
+ * Renderiza fallback visual de logo con iniciales.
+ *
+ * @param string $team_name Nombre del equipo.
+ * @param array  $args Argumentos de render.
+ * @return string
+ */
+function liga_get_team_logo_fallback_html( $team_name = '', $args = array() ) {
+	$defaults = array(
+		'class' => 'liga-team-logo',
+		'size'  => 'thumbnail',
+	);
+	$args     = wp_parse_args( $args, $defaults );
+	$name     = trim( sanitize_text_field( (string) $team_name ) );
+	$label    = '' !== $name
+		? sprintf( __( 'Logo de %s', 'liga-basket-chile' ), $name )
+		: __( 'Logo de equipo', 'liga-basket-chile' );
+	$classes  = trim( (string) $args['class'] . ' liga-team-logo--fallback' );
+
+	return sprintf(
+		'<span class="%1$s" role="img" aria-label="%2$s">%3$s</span>',
+		esc_attr( $classes ),
+		esc_attr( $label ),
+		esc_html( liga_get_team_initials( $name ) )
+	);
+}
+
+/**
+ * Renderiza el logo oficial de un equipo desde su imagen destacada.
+ *
+ * @param int   $team_id ID real del CPT equipo.
+ * @param array $args Argumentos: class, size.
+ * @return string
+ */
+function liga_get_team_logo_html( $team_id, $args = array() ) {
+	$team_id = absint( $team_id );
+
+	$defaults = array(
+		'class' => 'liga-team-logo',
+		'size'  => 'thumbnail',
+	);
+	$args     = wp_parse_args( $args, $defaults );
+
+	if ( ! $team_id || 'equipo' !== get_post_type( $team_id ) ) {
+		return liga_get_team_logo_fallback_html( '', $args );
+	}
+
+	$team_name    = liga_get_equipo_nombre( $team_id );
+	$thumbnail_id = get_post_thumbnail_id( $team_id );
+
+	if ( $thumbnail_id ) {
+		return wp_get_attachment_image(
+			$thumbnail_id,
+			$args['size'],
+			false,
+			array(
+				'class'    => esc_attr( (string) $args['class'] ),
+				'alt'      => esc_attr( sprintf( __( 'Logo de %s', 'liga-basket-chile' ), $team_name ) ),
+				'loading'  => 'lazy',
+				'decoding' => 'async',
+			)
+		);
+	}
+
+	return liga_get_team_logo_fallback_html( $team_name, $args );
+}
+
+/**
  * Obtiene temporada configurada en division.
  *
  * @param int $division_id ID de la division.

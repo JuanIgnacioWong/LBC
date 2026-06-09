@@ -304,12 +304,7 @@ add_filter( 'manage_equipo_posts_columns', 'liga_equipo_admin_columns' );
  */
 function liga_render_equipo_admin_columns( $column, $post_id ) {
 	if ( 'liga_logo' === $column ) {
-		$logo_id = (int) get_post_meta( $post_id, 'liga_logo_equipo', true );
-		if ( $logo_id > 0 ) {
-			echo wp_kses_post( wp_get_attachment_image( $logo_id, array( 36, 36 ) ) );
-		} else {
-			echo '<span aria-hidden="true">-</span>';
-		}
+		echo wp_kses_post( liga_get_team_logo_html( $post_id, array( 'class' => 'liga-team-logo liga-admin-team-logo', 'size' => array( 36, 36 ) ) ) );
 	}
 
 	if ( 'liga_division' === $column ) {

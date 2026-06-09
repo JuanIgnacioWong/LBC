@@ -402,6 +402,12 @@
   gap: 0.45rem;
 }
 
+.liga-team-chip .liga-team-logo {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
 .liga-match-list {
   display: grid;
   gap: 0.7rem;

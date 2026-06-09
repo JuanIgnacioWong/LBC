@@ -211,7 +211,7 @@ function liga_rest_get_equipos( WP_REST_Request $request ) {
 	$data = array();
 	foreach ( $teams as $team ) {
 		$division_id = (int) get_post_meta( $team->ID, 'liga_division', true );
-		$logo_id     = (int) get_post_meta( $team->ID, 'liga_logo_equipo', true );
+		$logo_id     = (int) get_post_thumbnail_id( $team->ID );
 		$team_year   = liga_get_equipo_temporada_label( (int) $team->ID );
 		$data[] = array(
 			'id'             => (int) $team->ID,

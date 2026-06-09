@@ -115,9 +115,15 @@ $widget_title_id = wp_unique_id( 'liga-results-widget-title-' );
 							<time class="liga-result-date"><?php echo esc_html( $format_match_date( $raw_date ) ); ?></time>
 						</header>
 						<div class="liga-single-post__result-scoreline">
-							<span class="liga-single-post__result-team"><?php echo esc_html( $local_name ); ?></span>
+							<span class="liga-single-post__result-team">
+								<?php echo wp_kses_post( liga_get_team_logo_html( $local_id, array( 'class' => 'liga-team-logo liga-single-post__result-team-logo', 'size' => 'thumbnail' ) ) ); ?>
+								<?php echo esc_html( $local_name ); ?>
+							</span>
 							<strong class="liga-result-score"><?php echo esc_html( sprintf( '%d - %d', $local_pts, $visita_pts ) ); ?></strong>
-							<span class="liga-single-post__result-team liga-single-post__result-team--away"><?php echo esc_html( $visita_name ); ?></span>
+							<span class="liga-single-post__result-team liga-single-post__result-team--away">
+								<?php echo esc_html( $visita_name ); ?>
+								<?php echo wp_kses_post( liga_get_team_logo_html( $visita_id, array( 'class' => 'liga-team-logo liga-single-post__result-team-logo', 'size' => 'thumbnail' ) ) ); ?>
+							</span>
 						</div>
 						<footer class="liga-result-foot">
 							<span class="liga-result-status"><?php echo esc_html( $format_status( $raw_status ) ); ?></span>

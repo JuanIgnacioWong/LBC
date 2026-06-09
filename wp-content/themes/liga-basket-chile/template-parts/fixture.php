@@ -137,7 +137,13 @@ $widget_title_id = wp_unique_id( 'liga-fixture-widget-title-' );
 							<?php if ( '' !== $match_time ) : ?>
 								<p class="liga-fixture-time"><time datetime="<?php echo esc_attr( $match_datetime ); ?>"><?php echo esc_html( $match_time ); ?> HRS</time></p>
 							<?php endif; ?>
-							<p class="liga-single-post__fixture-teams"><?php echo esc_html( $local_name . ' vs ' . $visita_name ); ?></p>
+							<div class="liga-fixture-teams">
+								<figure class="liga-fixture-team-logo"><?php echo wp_kses_post( liga_get_team_logo_html( $local_id, array( 'class' => 'liga-team-logo liga-fixture-team-logo__image', 'size' => 'thumbnail' ) ) ); ?></figure>
+								<p class="liga-fixture-team-name"><?php echo esc_html( $local_name ); ?></p>
+								<span class="liga-fixture-versus">vs</span>
+								<p class="liga-fixture-team-name"><?php echo esc_html( $visita_name ); ?></p>
+								<figure class="liga-fixture-team-logo"><?php echo wp_kses_post( liga_get_team_logo_html( $visita_id, array( 'class' => 'liga-team-logo liga-fixture-team-logo__image', 'size' => 'thumbnail' ) ) ); ?></figure>
+							</div>
 							<p class="liga-fixture-venue"><?php echo esc_html( $venue ); ?></p>
 						</div>
 					</article>

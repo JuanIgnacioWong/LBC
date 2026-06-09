@@ -98,33 +98,8 @@ $get_division_label = static function ( $division_id ) {
 	return '' !== $fallback ? $fallback : __( 'Sin division', 'liga-basket-chile' );
 };
 
-$build_team_short_name = static function ( $team_name ) {
-	$normalized = strtoupper( remove_accents( wp_strip_all_tags( (string) $team_name ) ) );
-	$tokens     = preg_split( '/\s+/', $normalized, -1, PREG_SPLIT_NO_EMPTY );
-	$abbr       = '';
-
-	foreach ( (array) $tokens as $token ) {
-		$clean_token = preg_replace( '/[^A-Z0-9]/', '', (string) $token );
-		if ( '' === $clean_token ) {
-			continue;
-		}
-
-		$abbr .= substr( $clean_token, 0, 1 );
-		if ( strlen( $abbr ) >= 3 ) {
-			break;
-		}
-	}
-
-	if ( strlen( $abbr ) < 2 ) {
-		$fallback = preg_replace( '/[^A-Z0-9]/', '', $normalized );
-		$abbr     = substr( (string) $fallback, 0, 3 );
-	}
-
-	return '' !== $abbr ? $abbr : 'LBC';
-};
-
 $team_cache = array();
-$get_team_data = static function ( $team_id ) use ( &$team_cache, $build_team_short_name ) {
+$get_team_data = static function ( $team_id ) use ( &$team_cache ) {
 	$team_id = absint( $team_id );
 	if ( isset( $team_cache[ $team_id ] ) ) {
 		return $team_cache[ $team_id ];
@@ -141,20 +116,9 @@ $get_team_data = static function ( $team_id ) use ( &$team_cache, $build_team_sh
 		}
 	}
 
-	$logo_src = '';
-	$logo_id  = $team_id > 0 ? (int) get_post_meta( $team_id, 'liga_logo_equipo', true ) : 0;
-	if ( $logo_id > 0 ) {
-		$logo_src = (string) wp_get_attachment_image_url( $logo_id, 'thumbnail' );
-		if ( '' === $logo_src ) {
-			$logo_src = (string) wp_get_attachment_image_url( $logo_id, 'full' );
-		}
-	}
-
 	$team_cache[ $team_id ] = array(
 		'id'   => $team_id,
 		'name' => '' !== $name ? $name : __( 'Equipo', 'liga-basket-chile' ),
-		'abbr' => $build_team_short_name( $name ),
-		'logo' => $logo_src,
 	);
 
 	return $team_cache[ $team_id ];
@@ -270,8 +234,6 @@ get_header();
 
 					$home_team      = $get_team_data( $local_id );
 					$away_team      = $get_team_data( $visita_id );
-					$home_logo      = '' !== $home_team['logo'] ? $home_team['logo'] : liga_svg_placeholder( $home_team['abbr'], 96, 96, '0b2a66', 'ffffff' );
-					$away_logo      = '' !== $away_team['logo'] ? $away_team['logo'] : liga_svg_placeholder( $away_team['abbr'], 96, 96, '071c46', 'f7931e' );
 
 					$score_label    = __( 'VS', 'liga-basket-chile' );
 					$has_real_score = false;
@@ -319,7 +281,7 @@ get_header();
 						<div class="liga-partidos-archive__scoreboard">
 							<div class="liga-partidos-archive__team liga-partidos-archive__team--home">
 								<figure class="liga-partidos-archive__team-logo">
-									<img src="<?php echo liga_escape_image_src( $home_logo ); ?>" alt="<?php echo esc_attr( sprintf( 'Logo %s', $home_team['name'] ) ); ?>">
+									<?php echo wp_kses_post( liga_get_team_logo_html( $home_team['id'], array( 'class' => 'liga-team-logo liga-partidos-archive__team-logo-image', 'size' => 'thumbnail' ) ) ); ?>
 								</figure>
 								<span class="liga-partidos-archive__team-name"><?php echo esc_html( $home_team['name'] ); ?></span>
 							</div>
@@ -330,7 +292,7 @@ get_header();
 
 							<div class="liga-partidos-archive__team liga-partidos-archive__team--away">
 								<figure class="liga-partidos-archive__team-logo">
-									<img src="<?php echo liga_escape_image_src( $away_logo ); ?>" alt="<?php echo esc_attr( sprintf( 'Logo %s', $away_team['name'] ) ); ?>">
+									<?php echo wp_kses_post( liga_get_team_logo_html( $away_team['id'], array( 'class' => 'liga-team-logo liga-partidos-archive__team-logo-image', 'size' => 'thumbnail' ) ) ); ?>
 								</figure>
 								<span class="liga-partidos-archive__team-name"><?php echo esc_html( $away_team['name'] ); ?></span>
 							</div>
