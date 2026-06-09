@@ -18,11 +18,13 @@ Este documento define un flujo seguro y profesional para:
   - Versionar código (`wp-content/themes`, plugins propios, mu-plugins)
   - No versionar uploads, caché, secretos
 - Servidor cPanel:
-  - `staging.tudominio.cl` (rama `develop`)
-  - `www.tudominio.cl` (rama `main`)
+  - Producción: `lbcchile.com`, con WordPress ya instalado en `public_html/`
+  - Staging opcional: subdominio dedicado, por ejemplo `staging.lbcchile.com`
 - CI/CD:
-  - GitHub Actions (`.github/workflows/deploy-cpanel.yml`)
-  - Despliegue por SSH + rsync
+  - Opción A: cPanel Git Version Control (`.cpanel.yml`)
+  - Opción B: GitHub Actions (`.github/workflows/deploy-cpanel.yml`) por SSH + rsync
+
+Importante: este repositorio despliega solo el tema `liga-basket-chile`. No despliega WordPress core, base de datos, uploads ni plugins instalados en producción.
 
 ## 2) Requisitos previos
 
@@ -117,21 +119,71 @@ Flujo:
 4. Merge `develop` -> `main`
 5. Deploy automático a producción
 
-## 7) Configuración de cPanel para deploy por GitHub Actions
+## 7) Configuración de cPanel para deploy
 
-### 7.1 Crear staging y producción
+### 7.1 Producción existente
 
 En cPanel:
 
-- Producción: `public_html/` (o ruta principal)
-- Staging: subdominio y carpeta dedicada (ejemplo: `staging/public_html/`)
+- Producción: `public_html/`
+- Dominio principal: `lbcchile.com`
+- WordPress debe existir ya en `public_html/`, incluyendo `wp-config.php`
+- El tema quedará en `public_html/wp-content/themes/liga-basket-chile/`
 
-### 7.2 Habilitar SSH en cPanel
+Staging es opcional. Si se usa:
+
+- crear subdominio, por ejemplo `staging.lbcchile.com`
+- instalar WordPress en la carpeta del subdominio
+- usar esa ruta como destino de staging
+
+### 7.2 Opción A: cPanel Git Version Control
+
+Esta opción usa el archivo `.cpanel.yml` incluido en la raíz del repositorio.
+
+En cPanel:
+
+1. Ir a `Git Version Control`.
+2. Crear o clonar el repositorio desde GitHub.
+3. Usar una carpeta de clonación fuera de `public_html`, por ejemplo:
+
+```bash
+/home/USUARIO/repositories/LBC
+```
+
+4. Activar deployment desde cPanel.
+5. Ejecutar `Deploy HEAD Commit`.
+
+El archivo `.cpanel.yml` copia:
+
+```bash
+wp-content/themes/liga-basket-chile/
+```
+
+hacia:
+
+```bash
+$HOME/public_html/wp-content/themes/liga-basket-chile/
+```
+
+Esta opción es adecuada si se quiere desplegar manualmente desde cPanel después de hacer push a GitHub.
+
+### 7.3 Opción B: GitHub Actions por SSH
+
+Esta opción despliega automáticamente al hacer push.
+
+Flujo:
+
+- push a `develop`: despliega a staging, si `CPANEL_STAGING_PATH` existe
+- push a `main`: despliega a producción en `public_html`
+
+El workflow valida que exista `wp-config.php` en la ruta remota antes de copiar archivos. Esto reduce el riesgo de desplegar sobre una carpeta equivocada.
+
+### 7.4 Habilitar SSH en cPanel
 
 - Activar acceso SSH (si el plan lo permite).
 - Crear o importar llave pública para despliegue.
 
-### 7.3 Definir secretos en GitHub
+### 7.5 Definir secretos en GitHub
 
 En `Settings > Secrets and variables > Actions`, crear:
 
@@ -142,29 +194,49 @@ En `Settings > Secrets and variables > Actions`, crear:
 - `CPANEL_STAGING_PATH` (ruta absoluta staging)
 - `CPANEL_PROD_PATH` (ruta absoluta producción)
 
-Ejemplo de rutas:
+Valores esperados para producción:
 
-- `/home/usuario/staging.tudominio.cl`
-- `/home/usuario/public_html`
+```bash
+CPANEL_SSH_HOST=lbcchile.com
+CPANEL_SSH_PORT=22
+CPANEL_SSH_USER=USUARIO_CPANEL
+CPANEL_PROD_PATH=/home/USUARIO_CPANEL/public_html
+```
+
+Si el proveedor entrega un host SSH distinto al dominio, usar ese host en `CPANEL_SSH_HOST`.
+
+Ejemplo de staging, solo si existe:
+
+```bash
+CPANEL_STAGING_PATH=/home/USUARIO_CPANEL/staging.lbcchile.com
+```
 
 ## 8) Cómo funciona el deploy
 
 Workflow: `.github/workflows/deploy-cpanel.yml`
 
 - push a `develop`:
-  - despliega `wp-content/` a staging
+  - despliega el tema a staging
 - push a `main`:
-  - despliega `wp-content/` a producción
+  - despliega el tema a producción
 
-Se excluyen:
+Origen:
 
-- `.github/`, `.ddev/`
-- `wp-content/uploads/`
-- cachés y artefactos locales
+```bash
+wp-content/themes/liga-basket-chile/
+```
+
+Destino producción:
+
+```bash
+public_html/wp-content/themes/liga-basket-chile/
+```
+
+El deploy usa `rsync --delete` solo dentro de la carpeta del tema. No borra plugins, uploads ni archivos del core de WordPress.
 
 Post-deploy:
 
-- intenta flush de caché vía WP-CLI si existe `wp-cli.phar` en servidor.
+- intenta flush de caché vía WP-CLI si está disponible en servidor.
 
 ## 9) Seguridad recomendada (mínimo profesional)
 
@@ -203,9 +275,11 @@ Buenas prácticas:
 1. QA completo en staging
 2. Performance (Lighthouse, caché activa)
 3. Backups de DB + archivos
-4. Confirmar menús, enlaces legales, sitemap
-5. Revisar permisos y credenciales
-6. Deploy a `main`
+4. Confirmar backup antes del primer deploy sobre `public_html`
+5. Confirmar que `CPANEL_PROD_PATH` termina en `/public_html`
+6. Confirmar menús, enlaces legales, sitemap
+7. Revisar permisos y credenciales
+8. Deploy a `main`
 
 ## 12) Troubleshooting
 

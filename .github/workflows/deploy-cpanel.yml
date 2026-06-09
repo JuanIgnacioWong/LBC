@@ -11,6 +11,9 @@ concurrency:
   group: deploy-cpanel-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  THEME_SLUG: liga-basket-chile
+
 jobs:
   deploy-staging:
     if: github.ref == 'refs/heads/develop'
@@ -30,21 +33,29 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.CPANEL_SSH_PORT }}" "${{ secrets.CPANEL_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy wp-content to staging
+      - name: Verify staging WordPress path
         env:
           SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
           SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
           REMOTE_PATH: ${{ secrets.CPANEL_STAGING_PATH }}
         run: |
+          set -euo pipefail
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "test -f '${REMOTE_PATH}/wp-config.php' && mkdir -p '${REMOTE_PATH}/wp-content/themes/${THEME_SLUG}'"
+
+      - name: Deploy theme to staging
+        env:
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          REMOTE_PATH: ${{ secrets.CPANEL_STAGING_PATH }}
+        run: |
+          set -euo pipefail
           rsync -az --delete \
-            --exclude ".git/" \
-            --exclude ".github/" \
-            --exclude ".ddev/" \
-            --exclude "node_modules/" \
-            --exclude "wp-content/uploads/" \
+            --exclude ".DS_Store" \
             -e "ssh -p ${SSH_PORT}" \
-            ./wp-content/ "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/wp-content/"
+            "./wp-content/themes/${THEME_SLUG}/" \
+            "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/wp-content/themes/${THEME_SLUG}/"
 
       - name: Run post-deploy commands on staging
         env:
@@ -53,7 +64,7 @@ jobs:
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
           REMOTE_PATH: ${{ secrets.CPANEL_STAGING_PATH }}
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "cd ${REMOTE_PATH}; if [ -f wp-cli.phar ]; then php wp-cli.phar cache flush || true; fi"
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "cd '${REMOTE_PATH}'; if command -v wp >/dev/null 2>&1; then wp cache flush --path='${REMOTE_PATH}' || true; elif [ -f wp-cli.phar ]; then php wp-cli.phar cache flush --path='${REMOTE_PATH}' || true; fi"
 
   deploy-production:
     if: github.ref == 'refs/heads/main'
@@ -73,21 +84,29 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.CPANEL_SSH_PORT }}" "${{ secrets.CPANEL_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy wp-content to production
+      - name: Verify production WordPress path
         env:
           SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
           SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
           REMOTE_PATH: ${{ secrets.CPANEL_PROD_PATH }}
         run: |
+          set -euo pipefail
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "test -f '${REMOTE_PATH}/wp-config.php' && mkdir -p '${REMOTE_PATH}/wp-content/themes/${THEME_SLUG}'"
+
+      - name: Deploy theme to production
+        env:
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          REMOTE_PATH: ${{ secrets.CPANEL_PROD_PATH }}
+        run: |
+          set -euo pipefail
           rsync -az --delete \
-            --exclude ".git/" \
-            --exclude ".github/" \
-            --exclude ".ddev/" \
-            --exclude "node_modules/" \
-            --exclude "wp-content/uploads/" \
+            --exclude ".DS_Store" \
             -e "ssh -p ${SSH_PORT}" \
-            ./wp-content/ "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/wp-content/"
+            "./wp-content/themes/${THEME_SLUG}/" \
+            "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/wp-content/themes/${THEME_SLUG}/"
 
       - name: Run post-deploy commands on production
         env:
@@ -96,4 +115,4 @@ jobs:
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
           REMOTE_PATH: ${{ secrets.CPANEL_PROD_PATH }}
         run: |
-          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "cd ${REMOTE_PATH}; if [ -f wp-cli.phar ]; then php wp-cli.phar cache flush || true; fi"
+          ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "cd '${REMOTE_PATH}'; if command -v wp >/dev/null 2>&1; then wp cache flush --path='${REMOTE_PATH}' || true; elif [ -f wp-cli.phar ]; then php wp-cli.phar cache flush --path='${REMOTE_PATH}' || true; fi"

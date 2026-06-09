@@ -1,0 +1,7 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=${HOME}/public_html/
+    - export THEMENAME=liga-basket-chile
+    - mkdir -p ${DEPLOYPATH}wp-content/themes/${THEMENAME}
+    - /usr/bin/rsync -a --delete --exclude=".DS_Store" wp-content/themes/${THEMENAME}/ ${DEPLOYPATH}wp-content/themes/${THEMENAME}/

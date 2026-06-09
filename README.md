@@ -21,8 +21,20 @@ URLs:
 
 ## Deploy CI/CD
 
-- `develop` -> staging
-- `main` -> produccion
+WordPress ya debe estar instalado en el hosting. El deploy sube solo el tema:
+
+- origen: `wp-content/themes/liga-basket-chile/`
+- destino produccion: `public_html/wp-content/themes/liga-basket-chile/`
+
+Opciones disponibles:
+
+- cPanel Git Version Control: usa `.cpanel.yml`
+- GitHub Actions por SSH: usa `.github/workflows/deploy-cpanel.yml`
+
+Ramas:
+
+- `develop` -> staging, si existe un subdominio de staging configurado
+- `main` -> produccion en `lbcchile.com`
 
 Workflow:
 
