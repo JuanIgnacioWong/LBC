@@ -306,7 +306,14 @@ function liga_render_admin_tabla_page() {
 		isset( $_GET['temporada'] ) ? sanitize_text_field( wp_unslash( $_GET['temporada'] ) ) : '',
 		$season_default
 	);
-	$force_recalc   = isset( $_GET['recalcular'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['recalcular'] ) );
+	$force_recalc   = false;
+	if ( isset( $_GET['recalcular'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['recalcular'] ) ) ) {
+		$nonce        = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		$force_recalc = wp_verify_nonce( $nonce, 'liga_recalcular_tabla_admin' );
+		if ( ! $force_recalc ) {
+			liga_add_admin_alert( 'error', __( 'Nonce invalido al recalcular la tabla.', 'liga-basket-chile' ) );
+		}
+	}
 
 	$divisions = get_posts(
 		array(
@@ -319,7 +326,25 @@ function liga_render_admin_tabla_page() {
 		)
 	);
 
-	$table = liga_calcular_tabla_posiciones( $division_id, $temporada, $force_recalc );
+	$temporadas = liga_get_available_temporadas();
+	if ( '' !== $temporada && ! isset( $temporadas[ $temporada ] ) ) {
+		$temporadas[ $temporada ] = $temporada;
+	}
+
+	$table        = array(
+		'tabla'                => array(),
+		'alerts'               => array(),
+		'partidos_computados'  => 0,
+		'partidos_descartados' => 0,
+		'total_equipos'        => 0,
+	);
+	$can_preview  = $division_id > 0 && liga_is_valid_temporada_label( $temporada );
+	if ( $can_preview ) {
+		if ( $force_recalc && function_exists( 'liga_clear_standings_cache' ) ) {
+			liga_clear_standings_cache( $division_id, $temporada );
+		}
+		$table = liga_calcular_tabla_posiciones( $division_id, $temporada, $force_recalc );
+	}
 	?>
 	<div class="wrap">
 		<h1><?php esc_html_e( 'Tabla de Posiciones', 'liga-basket-chile' ); ?></h1>
@@ -327,7 +352,7 @@ function liga_render_admin_tabla_page() {
 			<input type="hidden" name="page" value="liga-basquet-tabla">
 			<label for="division"><strong><?php esc_html_e( 'Division', 'liga-basket-chile' ); ?></strong></label>
 			<select id="division" name="division">
-				<option value="0"><?php esc_html_e( 'Todas', 'liga-basket-chile' ); ?></option>
+				<option value="0"><?php esc_html_e( 'Seleccionar', 'liga-basket-chile' ); ?></option>
 				<?php foreach ( $divisions as $division ) : ?>
 					<option value="<?php echo esc_attr( (string) $division->ID ); ?>" <?php selected( $division_id, (int) $division->ID ); ?>>
 						<?php echo esc_html( $division->post_title ); ?>
@@ -336,13 +361,29 @@ function liga_render_admin_tabla_page() {
 			</select>
 
 			<label for="temporada"><strong><?php esc_html_e( 'Temporada', 'liga-basket-chile' ); ?></strong></label>
-			<input type="text" id="temporada" name="temporada" value="<?php echo esc_attr( $temporada ); ?>">
-			<button class="button button-primary" type="submit"><?php esc_html_e( 'Ver tabla', 'liga-basket-chile' ); ?></button>
+			<select id="temporada" name="temporada">
+				<?php foreach ( $temporadas as $temporada_key => $temporada_label ) : ?>
+					<option value="<?php echo esc_attr( (string) $temporada_key ); ?>" <?php selected( $temporada, (string) $temporada_key ); ?>>
+						<?php echo esc_html( (string) $temporada_label ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+			<?php wp_nonce_field( 'liga_recalcular_tabla_admin' ); ?>
+			<button class="button button-primary" type="submit"><?php esc_html_e( 'Previsualizar tabla', 'liga-basket-chile' ); ?></button>
 			<button class="button" type="submit" name="recalcular" value="1"><?php esc_html_e( 'Recalcular', 'liga-basket-chile' ); ?></button>
 		</form>
 
+		<?php if ( ! $can_preview ) : ?>
+			<div class="notice notice-info inline"><p><?php esc_html_e( 'Selecciona una division/categoria y temporada para previsualizar la tabla.', 'liga-basket-chile' ); ?></p></div>
+		<?php endif; ?>
+
 		<?php if ( ! empty( $table['alerts'] ) ) : ?>
 			<div class="notice notice-warning"><p><?php echo esc_html( implode( ' | ', $table['alerts'] ) ); ?></p></div>
+		<?php endif; ?>
+		<?php if ( $can_preview && empty( $table['total_equipos'] ) ) : ?>
+			<div class="notice notice-warning inline"><p><?php esc_html_e( 'No hay equipos inscritos para esta division y temporada.', 'liga-basket-chile' ); ?></p></div>
+		<?php elseif ( $can_preview && empty( $table['partidos_computados'] ) ) : ?>
+			<div class="notice notice-info inline"><p><?php esc_html_e( 'No se encontraron partidos jugados computables. Los equipos se muestran con estadisticas en cero.', 'liga-basket-chile' ); ?></p></div>
 		<?php endif; ?>
 		<p>
 			<strong><?php esc_html_e( 'Partidos computados', 'liga-basket-chile' ); ?>:</strong>
@@ -370,7 +411,7 @@ function liga_render_admin_tabla_page() {
 			</thead>
 			<tbody>
 				<?php if ( empty( $table['tabla'] ) ) : ?>
-					<tr><td colspan="11"><?php esc_html_e( 'No hay datos para los filtros seleccionados.', 'liga-basket-chile' ); ?></td></tr>
+					<tr><td colspan="11"><?php echo esc_html( $can_preview ? __( 'No hay datos para los filtros seleccionados.', 'liga-basket-chile' ) : __( 'Selecciona filtros para ver la previsualizacion.', 'liga-basket-chile' ) ); ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ( $table['tabla'] as $row ) : ?>
 					<tr>

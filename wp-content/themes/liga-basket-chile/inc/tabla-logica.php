@@ -58,25 +58,161 @@ function liga_get_table_cache_key( $division_id, $temporada ) {
 }
 
 /**
- * Reglas configurables para puntos de tabla.
+ * Limpia cache de standings manteniendo compatibilidad con invalidacion global.
+ *
+ * @param int    $division Division.
+ * @param string $temporada Temporada.
+ * @return void
+ */
+function liga_clear_standings_cache( $division = 0, $temporada = '' ) {
+	unset( $division, $temporada );
+	liga_flush_table_cache();
+}
+
+/**
+ * Normaliza estado de partido para calculo deportivo.
+ *
+ * @param mixed $status Estado crudo.
+ * @return string
+ */
+function liga_normalize_match_status( $status ) {
+	$status = trim( sanitize_text_field( (string) $status ) );
+	if ( '' === $status ) {
+		return 'programado';
+	}
+
+	$key = remove_accents( $status );
+	$key = function_exists( 'mb_strtolower' ) ? mb_strtolower( $key, 'UTF-8' ) : strtolower( $key );
+	$key = sanitize_key( $key );
+
+	$aliases = array(
+		'programado' => 'programado',
+		'jugado'     => 'jugado',
+		'finalizado' => 'finalizado',
+		'suspendido' => 'suspendido',
+		'cancelado'  => 'cancelado',
+	);
+
+	return isset( $aliases[ $key ] ) ? $aliases[ $key ] : $key;
+}
+
+/**
+ * Normaliza incomparecencia a valores semanticos.
+ *
+ * @param mixed $raw_forfeit Valor crudo.
+ * @return string
+ */
+function liga_normalize_forfeit_status( $raw_forfeit ) {
+	$value = trim( sanitize_text_field( (string) $raw_forfeit ) );
+	if ( '' === $value ) {
+		return 'none';
+	}
+
+	$key = remove_accents( $value );
+	$key = function_exists( 'mb_strtolower' ) ? mb_strtolower( $key, 'UTF-8' ) : strtolower( $key );
+	$key = preg_replace( '/[^a-z0-9]+/u', '_', $key );
+	$key = trim( (string) $key, '_' );
+
+	if ( in_array( $key, array( 'ninguna', 'none', 'no', 'sin_incomparecencia' ), true ) ) {
+		return 'none';
+	}
+
+	if ( in_array( $key, array( 'local', 'home', 'local_no_comparecio', 'home_forfeit' ), true ) ) {
+		return 'home_forfeit';
+	}
+
+	if ( in_array( $key, array( 'visita', 'visitante', 'away', 'visita_no_comparecio', 'visitante_no_comparecio', 'away_forfeit' ), true ) ) {
+		return 'away_forfeit';
+	}
+
+	return 'none';
+}
+
+/**
+ * Normaliza incomparecencia al valor historico usado por metadatos del proyecto.
+ *
+ * @param mixed $raw_forfeit Valor crudo.
+ * @return string
+ */
+function liga_normalize_match_forfeit_meta_value( $raw_forfeit ) {
+	$normalized = liga_normalize_forfeit_status( $raw_forfeit );
+	if ( 'home_forfeit' === $normalized ) {
+		return 'local_no_comparecio';
+	}
+
+	if ( 'away_forfeit' === $normalized ) {
+		return 'visita_no_comparecio';
+	}
+
+	return 'ninguna';
+}
+
+/**
+ * Lee el primer meta no vacio entre varias llaves.
+ *
+ * @param int              $post_id Post.
+ * @param array<int,string> $keys Llaves meta.
+ * @return mixed
+ */
+function liga_get_first_match_meta_value( $post_id, $keys ) {
+	foreach ( $keys as $key ) {
+		$value = get_post_meta( $post_id, $key, true );
+		if ( '' !== trim( (string) $value ) ) {
+			return $value;
+		}
+	}
+
+	return '';
+}
+
+function liga_get_match_home_team_id( $match_id ) {
+	return absint( liga_get_first_match_meta_value( $match_id, array( 'liga_equipo_local', 'equipo_local' ) ) );
+}
+
+function liga_get_match_away_team_id( $match_id ) {
+	return absint( liga_get_first_match_meta_value( $match_id, array( 'liga_equipo_visita', 'liga_equipo_visitante', 'equipo_visita', 'equipo_visitante' ) ) );
+}
+
+function liga_get_match_home_score( $match_id ) {
+	return absint( liga_get_first_match_meta_value( $match_id, array( 'liga_puntos_local', 'puntos_local' ) ) );
+}
+
+function liga_get_match_away_score( $match_id ) {
+	return absint( liga_get_first_match_meta_value( $match_id, array( 'liga_puntos_visita', 'liga_puntos_visitante', 'puntos_visita', 'puntos_visitante' ) ) );
+}
+
+function liga_get_match_division( $match_id ) {
+	return absint( liga_get_first_match_meta_value( $match_id, array( 'liga_division', 'division' ) ) );
+}
+
+function liga_get_match_season( $match_id ) {
+	return trim( sanitize_text_field( (string) liga_get_first_match_meta_value( $match_id, array( 'liga_temporada', 'temporada' ) ) ) );
+}
+
+function liga_get_match_status( $match_id ) {
+	return liga_normalize_match_status( liga_get_first_match_meta_value( $match_id, array( 'liga_estado_partido', 'estado_partido', 'estado' ) ) );
+}
+
+function liga_get_match_forfeit_status( $match_id ) {
+	return liga_normalize_match_forfeit_meta_value(
+		liga_get_first_match_meta_value( $match_id, array( 'liga_incomparecencia', 'tipo_incomparecencia', 'equipo_incompareciente', 'incomparecencia' ) )
+	);
+}
+
+/**
+ * Reglas oficiales para puntos de tabla.
+ *
+ * Partido jugado: ganador +2, perdedor +1.
+ * Incomparecencia: ganador +2, equipo ausente +0.
  *
  * @return array<string, int>
  */
 function liga_get_standings_points_rules() {
-	$resolve_rule = static function ( $option_key, $fallback ) {
-		$raw = liga_get_option( $option_key, $fallback );
-		if ( '' === trim( (string) $raw ) ) {
-			return (int) $fallback;
-		}
-
-		return max( 0, (int) $raw );
-	};
-
 	$rules = array(
-		'victoria'                 => $resolve_rule( 'standings_points_win', 2 ),
-		'derrota'                  => $resolve_rule( 'standings_points_loss', 1 ),
-		'victoria_incomparecencia' => $resolve_rule( 'standings_points_walkover_win', 2 ),
-		'incomparecencia'          => $resolve_rule( 'standings_points_walkover_loss', 0 ),
+		'victoria'                 => 2,
+		'derrota'                  => 1,
+		'victoria_incomparecencia' => 2,
+		'incomparecencia'          => 0,
 	);
 
 	$filtered = apply_filters( 'liga_standings_points_rules', $rules );
@@ -84,11 +220,12 @@ function liga_get_standings_points_rules() {
 		return $rules;
 	}
 
-	foreach ( $rules as $rule_key => $rule_value ) {
-		$rules[ $rule_key ] = isset( $filtered[ $rule_key ] ) ? absint( $filtered[ $rule_key ] ) : $rule_value;
-	}
+	$filtered['victoria']                 = 2;
+	$filtered['derrota']                  = 1;
+	$filtered['victoria_incomparecencia'] = 2;
+	$filtered['incomparecencia']          = 0;
 
-	return $rules;
+	return $filtered;
 }
 
 /**
@@ -154,14 +291,14 @@ function liga_get_match_context_snapshot( $partido_id ) {
 		return $snapshot;
 	}
 
-	$snapshot['estado']          = sanitize_key( (string) get_post_meta( $partido_id, 'liga_estado_partido', true ) );
-	$snapshot['local_id']        = (int) get_post_meta( $partido_id, 'liga_equipo_local', true );
-	$snapshot['visita_id']       = (int) get_post_meta( $partido_id, 'liga_equipo_visita', true );
-	$snapshot['division_id']     = (int) get_post_meta( $partido_id, 'liga_division', true );
-	$snapshot['temporada']       = trim( sanitize_text_field( (string) get_post_meta( $partido_id, 'liga_temporada', true ) ) );
-	$snapshot['puntos_local']    = (int) get_post_meta( $partido_id, 'liga_puntos_local', true );
-	$snapshot['puntos_visita']   = (int) get_post_meta( $partido_id, 'liga_puntos_visita', true );
-	$snapshot['incomparecencia'] = sanitize_key( (string) get_post_meta( $partido_id, 'liga_incomparecencia', true ) );
+	$snapshot['estado']          = liga_get_match_status( $partido_id );
+	$snapshot['local_id']        = liga_get_match_home_team_id( $partido_id );
+	$snapshot['visita_id']       = liga_get_match_away_team_id( $partido_id );
+	$snapshot['division_id']     = liga_get_match_division( $partido_id );
+	$snapshot['temporada']       = liga_get_match_season( $partido_id );
+	$snapshot['puntos_local']    = liga_get_match_home_score( $partido_id );
+	$snapshot['puntos_visita']   = liga_get_match_away_score( $partido_id );
+	$snapshot['incomparecencia'] = liga_get_match_forfeit_status( $partido_id );
 
 	if ( ! liga_is_valid_temporada_label( $snapshot['temporada'] ) ) {
 		$division_temporada = liga_get_division_temporada_label( (int) $snapshot['division_id'] );
@@ -170,9 +307,7 @@ function liga_get_match_context_snapshot( $partido_id ) {
 		}
 	}
 
-	if ( ! in_array( $snapshot['incomparecencia'], array( 'ninguna', 'local_no_comparecio', 'visita_no_comparecio' ), true ) ) {
-		$snapshot['incomparecencia'] = 'ninguna';
-	}
+	$snapshot['incomparecencia'] = liga_normalize_match_forfeit_meta_value( $snapshot['incomparecencia'] );
 
 	return $snapshot;
 }
@@ -371,7 +506,7 @@ function liga_is_match_countable_for_standings( $partido_id, $division_id = 0, $
 		return $empty_result;
 	}
 
-	$estado = sanitize_key( (string) get_post_meta( $partido_id, 'liga_estado_partido', true ) );
+	$estado = liga_get_match_status( $partido_id );
 	if ( ! in_array( $estado, array( 'jugado', 'finalizado' ), true ) ) {
 		$empty_result['reason'] = __( 'estado no computable', 'liga-basket-chile' );
 		return $empty_result;
@@ -703,13 +838,7 @@ function liga_calcular_tabla_posiciones( $division, $temporada, $force_recalcula
 		);
 	}
 
-	$meta_query = array(
-		array(
-			'key'     => 'liga_estado_partido',
-			'value'   => array( 'jugado', 'finalizado' ),
-			'compare' => 'IN',
-		),
-	);
+	$meta_query = array();
 	$points_rules = liga_get_standings_points_rules();
 
 	if ( $division_id > 0 ) {
@@ -751,8 +880,14 @@ function liga_calcular_tabla_posiciones( $division, $temporada, $force_recalcula
 		}
 	}
 
+	if ( $division_id > 0 && empty( $tabla ) ) {
+		$add_alert( __( 'No hay equipos inscritos para esta division y temporada.', 'liga-basket-chile' ) );
+	}
+
 	$partidos_computados  = 0;
 	$partidos_descartados = 0;
+	$partidos_no_computables_por_estado = 0;
+	$incomparecencias_detectadas = 0;
 
 	foreach ( $partidos as $partido ) {
 		$partido_id  = (int) $partido->ID;
@@ -764,6 +899,11 @@ function liga_calcular_tabla_posiciones( $division, $temporada, $force_recalcula
 		if ( empty( $evaluation['is_countable'] ) ) {
 			$partidos_descartados++;
 			$reason = isset( $evaluation['reason'] ) ? trim( (string) $evaluation['reason'] ) : '';
+			if ( __( 'estado no computable', 'liga-basket-chile' ) === $reason ) {
+				$partidos_no_computables_por_estado++;
+				continue;
+			}
+
 			$add_alert(
 				sprintf(
 					/* translators: 1: partido ID, 2: motivo de descarte */
@@ -775,8 +915,32 @@ function liga_calcular_tabla_posiciones( $division, $temporada, $force_recalcula
 			continue;
 		}
 
+		if ( isset( $match_data['incomparecencia'] ) && 'ninguna' !== (string) $match_data['incomparecencia'] ) {
+			$incomparecencias_detectadas++;
+		}
+
 		$head_to_head = liga_calculate_team_basketball_stats( $tabla, $head_to_head, $match_data, $points_rules );
 		$partidos_computados++;
+	}
+
+	if ( $partidos_no_computables_por_estado > 0 ) {
+		$add_alert(
+			sprintf(
+				/* translators: %d: cantidad de partidos */
+				__( '%d partidos programados/suspendidos/cancelados no afectan la tabla.', 'liga-basket-chile' ),
+				$partidos_no_computables_por_estado
+			)
+		);
+	}
+
+	if ( $incomparecencias_detectadas > 0 ) {
+		$add_alert(
+			sprintf(
+				/* translators: %d: cantidad de incomparecencias */
+				__( '%d incomparecencias computadas: el ausente suma 0 pts e INC +1.', 'liga-basket-chile' ),
+				$incomparecencias_detectadas
+			)
+		);
 	}
 
 	$tabla_values = array_values( $tabla );

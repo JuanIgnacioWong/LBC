@@ -90,6 +90,7 @@ function liga_register_post_meta_fields() {
 		'liga_fecha_partido'   => 'string',
 		'liga_hora_partido'    => 'string',
 		'liga_cancha'          => 'string',
+		'liga_jornada_partido' => 'string',
 		'liga_estado_partido'  => 'string',
 		'liga_puntos_local'    => 'integer',
 		'liga_puntos_visita'   => 'integer',

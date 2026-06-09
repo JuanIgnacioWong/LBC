@@ -1,6 +1,6 @@
 <?php
 /**
- * Importador CSV de partidos.
+ * Importador administrativo de calendario oficial de partidos.
  *
  * @package LigaBasketChile
  */
@@ -117,6 +117,266 @@ function liga_import_partidos_normalize_estado( $value ) {
  */
 function liga_import_partidos_allowed_states() {
 	return array( 'programado', 'jugado', 'finalizado', 'suspendido', 'cancelado' );
+}
+
+/**
+ * Obtiene extensiones soportadas por el importador oficial.
+ *
+ * @return array<int, string>
+ */
+function liga_import_partidos_supported_extensions() {
+	return array( 'csv', 'xls', 'xlsx' );
+}
+
+/**
+ * Normaliza encabezados del archivo oficial a una llave comparable.
+ *
+ * @param mixed $value Encabezado.
+ * @return string
+ */
+function liga_import_partidos_normalize_header_key( $value ) {
+	$key = liga_import_partidos_normalize_for_compare( $value );
+	$key = preg_replace( '/[^a-z0-9]+/u', '_', $key );
+	return trim( (string) $key, '_' );
+}
+
+/**
+ * Mapa de alias de encabezados reales a campos internos.
+ *
+ * @return array<string, string>
+ */
+function liga_import_partidos_header_aliases() {
+	return array(
+		'jornada'          => 'jornada',
+		'fecha'            => 'fecha',
+		'dia'              => 'fecha',
+		'hora'             => 'hora',
+		'horario'          => 'hora',
+		'lugar'            => 'recinto',
+		'recinto'          => 'recinto',
+		'cancha'           => 'recinto',
+		'gimnasio'         => 'recinto',
+		'sede'             => 'recinto',
+		'division'         => 'division',
+		'división'         => 'division',
+		'categoria'        => 'division',
+		'categoría'        => 'division',
+		'temporada'        => 'temporada',
+		'anio'             => 'temporada',
+		'ano'              => 'temporada',
+		'equipo_1'         => 'equipo_local',
+		'equipo1'          => 'equipo_local',
+		'equipo_local'     => 'equipo_local',
+		'local'            => 'equipo_local',
+		'equipo_2'         => 'equipo_visitante',
+		'equipo2'          => 'equipo_visitante',
+		'equipo_visitante' => 'equipo_visitante',
+		'equipo_visita'    => 'equipo_visitante',
+		'visitante'        => 'equipo_visitante',
+		'visita'           => 'equipo_visitante',
+		'resultado'        => 'resultado',
+		'marcador'         => 'resultado',
+		'score'            => 'resultado',
+		'estado'           => 'estado',
+	);
+}
+
+/**
+ * Convierte encabezados detectados en indices de campos internos.
+ *
+ * @param array<int, mixed> $header Encabezados.
+ * @return array<string, int>
+ */
+function liga_import_partidos_map_header_indexes( $header ) {
+	$aliases = liga_import_partidos_header_aliases();
+	$mapped  = array();
+
+	foreach ( $header as $index => $label ) {
+		$key = liga_import_partidos_normalize_header_key( $label );
+		if ( '' === $key || ! isset( $aliases[ $key ] ) ) {
+			continue;
+		}
+
+		$field = $aliases[ $key ];
+		if ( ! isset( $mapped[ $field ] ) ) {
+			$mapped[ $field ] = (int) $index;
+		}
+	}
+
+	return $mapped;
+}
+
+/**
+ * Normaliza encabezados de importacion de partidos a campos internos.
+ *
+ * @param array<int, mixed> $headers Encabezados.
+ * @return array<string, int>
+ */
+function liga_normalize_match_import_headers( array $headers ) {
+	return liga_import_partidos_map_header_indexes( $headers );
+}
+
+/**
+ * Determina si una fila tabular esta vacia.
+ *
+ * @param array<int, mixed> $row Fila.
+ * @return bool
+ */
+function liga_import_partidos_is_empty_raw_row( $row ) {
+	foreach ( $row as $value ) {
+		if ( '' !== trim( (string) $value ) ) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Obtiene timezone del sitio con fallback compatible.
+ *
+ * @return DateTimeZone
+ */
+function liga_import_partidos_get_timezone() {
+	if ( function_exists( 'wp_timezone' ) ) {
+		return wp_timezone();
+	}
+
+	return new DateTimeZone( 'UTC' );
+}
+
+/**
+ * Normaliza numero serial de Excel a fecha ISO.
+ *
+ * @param mixed $value Valor.
+ * @return string
+ */
+function liga_import_partidos_normalize_date_value( $value ) {
+	if ( $value instanceof DateTimeInterface ) {
+		return $value->format( 'Y-m-d' );
+	}
+
+	$raw = liga_import_partidos_normalize_text( $value );
+	if ( '' === $raw ) {
+		return '';
+	}
+
+	if ( is_numeric( $raw ) && (float) $raw > 20000 ) {
+		try {
+			$date = new DateTimeImmutable( '1899-12-30', liga_import_partidos_get_timezone() );
+			return $date->modify( '+' . (int) floor( (float) $raw ) . ' days' )->format( 'Y-m-d' );
+		} catch ( Exception $exception ) {
+			return $raw;
+		}
+	}
+
+	$formats = array( 'Y-m-d', 'd/m/Y', 'd-m-Y', 'd.m.Y', 'm/d/Y' );
+	foreach ( $formats as $format ) {
+		$date = DateTime::createFromFormat( $format, $raw, liga_import_partidos_get_timezone() );
+		if ( $date instanceof DateTimeInterface ) {
+			return $date->format( 'Y-m-d' );
+		}
+	}
+
+	return $raw;
+}
+
+/**
+ * Normaliza hora desde texto o fraccion Excel.
+ *
+ * @param mixed $value Valor.
+ * @return string
+ */
+function liga_import_partidos_normalize_time_value( $value ) {
+	if ( $value instanceof DateTimeInterface ) {
+		return $value->format( 'H:i' );
+	}
+
+	$raw = liga_import_partidos_normalize_text( $value );
+	if ( '' === $raw ) {
+		return '';
+	}
+
+	if ( is_numeric( $raw ) && (float) $raw > 0 && (float) $raw < 1 ) {
+		$total_minutes = (int) round( (float) $raw * 24 * 60 );
+		$hours         = (int) floor( $total_minutes / 60 ) % 24;
+		$minutes       = $total_minutes % 60;
+		return sprintf( '%02d:%02d', $hours, $minutes );
+	}
+
+	if ( 1 === preg_match( '/^(\d{1,2}):(\d{2})(?::\d{2})?$/', $raw, $matches ) ) {
+		return sprintf( '%02d:%02d', min( 23, (int) $matches[1] ), min( 59, (int) $matches[2] ) );
+	}
+
+	return $raw;
+}
+
+/**
+ * Parsea la celda Resultado del calendario oficial.
+ *
+ * @param mixed $value Resultado.
+ * @return array{has_result:bool,puntos_local:int,puntos_visita:int,incomparecencia:string,error:string}
+ */
+function liga_import_partidos_parse_result_value( $value ) {
+	$raw = liga_import_partidos_normalize_text( $value );
+	$out = array(
+		'has_result'      => false,
+		'puntos_local'    => 0,
+		'puntos_visita'   => 0,
+		'incomparecencia' => 'ninguna',
+		'error'           => '',
+	);
+
+	if ( '' === $raw ) {
+		return $out;
+	}
+
+	if ( 1 === preg_match( '/^(\d{1,3})\s*[-:\/]\s*(\d{1,3})$/', $raw, $matches ) ) {
+		$out['has_result']    = true;
+		$out['puntos_local']  = absint( $matches[1] );
+		$out['puntos_visita'] = absint( $matches[2] );
+		return $out;
+	}
+
+	$compare = liga_import_partidos_normalize_for_compare( $raw );
+	if ( 1 === preg_match( '/(?:^|[^\pL\pN])(?:w\.?o\.?|walkover|incomparecencia|no comparecio)(?:$|[^\pL\pN])/u', $compare ) ) {
+		$out['has_result'] = true;
+		if ( false !== strpos( $compare, 'local' ) || false !== strpos( $compare, 'equipo 1' ) ) {
+			$out['incomparecencia'] = 'local_no_comparecio';
+		} elseif ( false !== strpos( $compare, 'visita' ) || false !== strpos( $compare, 'visitante' ) || false !== strpos( $compare, 'equipo 2' ) ) {
+			$out['incomparecencia'] = 'visita_no_comparecio';
+		} else {
+			$out['error'] = __( 'resultado por incomparecencia ambiguo: indica si no comparecio local o visita.', 'liga-basket-chile' );
+		}
+
+		if ( '' === $out['error'] ) {
+			$walkover_score       = liga_get_walkover_score( $out['incomparecencia'] );
+			$out['puntos_local']  = (int) $walkover_score['local'];
+			$out['puntos_visita'] = (int) $walkover_score['visita'];
+		}
+
+		return $out;
+	}
+
+	$out['error'] = __( 'resultado invalido. Usa formato tipo 73-39 o deja la celda vacia.', 'liga-basket-chile' );
+	return $out;
+}
+
+/**
+ * Parsea marcador de importacion de partidos desde una sola columna.
+ *
+ * @param mixed $raw_score Marcador.
+ * @return array<string,mixed>
+ */
+function liga_parse_match_score( $raw_score ) {
+	$parsed = liga_import_partidos_parse_result_value( $raw_score );
+
+	return array(
+		'has_score'     => ! empty( $parsed['has_result'] ),
+		'puntos_local'  => isset( $parsed['puntos_local'] ) ? (int) $parsed['puntos_local'] : 0,
+		'puntos_visita' => isset( $parsed['puntos_visita'] ) ? (int) $parsed['puntos_visita'] : 0,
+		'error'         => isset( $parsed['error'] ) ? (string) $parsed['error'] : '',
+	);
 }
 
 /**
@@ -333,60 +593,44 @@ function liga_import_partidos_exists_in_system( $division_id, $temporada, $local
 }
 
 /**
- * Parsea CSV de partidos validando encabezado obligatorio.
+ * Convierte filas tabulares a filas internas del importador.
  *
- * @param string $file_path Ruta temporal.
+ * @param array<int, array<int, mixed>> $raw_rows Filas.
  * @return array<int, array<string, mixed>>|WP_Error
  */
-function liga_import_partidos_parse_csv( $file_path ) {
-	$handle = fopen( $file_path, 'r' );
-	if ( ! $handle ) {
-		return new WP_Error( 'import_csv_open_failed', __( 'No fue posible leer el archivo CSV.', 'liga-basket-chile' ) );
+function liga_import_partidos_normalize_tabular_rows( $raw_rows ) {
+	$header = array();
+	$offset = 0;
+
+	foreach ( $raw_rows as $index => $raw_row ) {
+		if ( liga_import_partidos_is_empty_raw_row( $raw_row ) ) {
+			continue;
+		}
+
+		$raw_row[0] = isset( $raw_row[0] ) ? preg_replace( '/^\xEF\xBB\xBF/u', '', (string) $raw_row[0] ) : '';
+		$mapped     = liga_import_partidos_map_header_indexes( $raw_row );
+		if ( isset( $mapped['equipo_local'], $mapped['equipo_visitante'] ) ) {
+			$header = $mapped;
+			$offset = (int) $index + 1;
+			break;
+		}
 	}
 
-	$header = fgetcsv( $handle, 0, ',' );
-	if ( false === $header || ! is_array( $header ) ) {
-		fclose( $handle );
-		return new WP_Error( 'import_csv_empty', __( 'El archivo CSV esta vacio.', 'liga-basket-chile' ) );
-	}
-
-	if ( isset( $header[0] ) ) {
-		$header[0] = preg_replace( '/^\xEF\xBB\xBF/u', '', (string) $header[0] );
-	}
-
-	$header = array_map(
-		static function ( $field ) {
-			return sanitize_key( liga_import_partidos_normalize_text( $field ) );
-		},
-		$header
-	);
-
-	$expected_header = array( 'division', 'temporada', 'equipo_local', 'equipo_visitante', 'fecha', 'hora', 'recinto', 'estado' );
-	if ( $header !== $expected_header ) {
-		fclose( $handle );
+	if ( empty( $header ) ) {
 		return new WP_Error(
-			'import_csv_header_invalid',
-			__( 'Encabezado invalido. Debe ser exactamente: division,temporada,equipo_local,equipo_visitante,fecha,hora,recinto,estado', 'liga-basket-chile' )
+			'import_header_invalid',
+			__( 'No se detectaron encabezados validos. El calendario debe incluir Equipo 1 y Equipo 2, y puede incluir Resultado, Fecha, Hora, Lugar y Jornada.', 'liga-basket-chile' )
 		);
 	}
 
 	$rows = array();
-	$line = 1;
-	while ( ( $data = fgetcsv( $handle, 0, ',' ) ) !== false ) {
-		$line++;
-		$data = array_pad( $data, 8, '' );
+	foreach ( $raw_rows as $index => $raw_row ) {
+		if ( (int) $index < $offset || liga_import_partidos_is_empty_raw_row( $raw_row ) ) {
+			continue;
+		}
 
-		$row = array(
-			'line'             => $line,
-			'division'         => isset( $data[0] ) ? (string) $data[0] : '',
-			'temporada'        => isset( $data[1] ) ? (string) $data[1] : '',
-			'equipo_local'     => isset( $data[2] ) ? (string) $data[2] : '',
-			'equipo_visitante' => isset( $data[3] ) ? (string) $data[3] : '',
-			'fecha'            => isset( $data[4] ) ? (string) $data[4] : '',
-			'hora'             => isset( $data[5] ) ? (string) $data[5] : '',
-			'recinto'          => isset( $data[6] ) ? (string) $data[6] : '',
-			'estado'           => isset( $data[7] ) ? (string) $data[7] : '',
-		);
+		$row         = liga_normalize_match_import_row( $raw_row, $header );
+		$row['line'] = (int) $index + 1;
 
 		$is_empty = true;
 		foreach ( $row as $key => $value ) {
@@ -399,16 +643,133 @@ function liga_import_partidos_parse_csv( $file_path ) {
 			}
 		}
 
-		if ( $is_empty ) {
-			continue;
+		if ( ! $is_empty ) {
+			$rows[] = $row;
+		}
+	}
+
+	return $rows;
+}
+
+/**
+ * Normaliza una fila tabular de importacion de partidos segun mapa de encabezados.
+ *
+ * @param array<int, mixed>    $row Fila original.
+ * @param array<string, int>   $header_map Mapa campo interno => indice.
+ * @return array<string, mixed>
+ */
+function liga_normalize_match_import_row( array $row, array $header_map ) {
+	$get_value = static function ( $field ) use ( $row, $header_map ) {
+		if ( ! isset( $header_map[ $field ] ) ) {
+			return '';
 		}
 
-		$rows[] = $row;
+		$index = (int) $header_map[ $field ];
+		return isset( $row[ $index ] ) ? $row[ $index ] : '';
+	};
+
+	return array(
+		'jornada'          => $get_value( 'jornada' ),
+		'division'         => $get_value( 'division' ),
+		'temporada'        => $get_value( 'temporada' ),
+		'equipo_local'     => $get_value( 'equipo_local' ),
+		'equipo_visitante' => $get_value( 'equipo_visitante' ),
+		'resultado'        => $get_value( 'resultado' ),
+		'fecha'            => $get_value( 'fecha' ),
+		'hora'             => $get_value( 'hora' ),
+		'recinto'          => $get_value( 'recinto' ),
+		'estado'           => $get_value( 'estado' ),
+	);
+}
+
+/**
+ * Parsea CSV con encabezados oficiales o legacy.
+ *
+ * @param string $file_path Ruta temporal.
+ * @return array<int, array<string, mixed>>|WP_Error
+ */
+function liga_import_partidos_parse_csv( $file_path ) {
+	$handle = fopen( $file_path, 'r' );
+	if ( ! $handle ) {
+		return new WP_Error( 'import_csv_open_failed', __( 'No fue posible leer el archivo CSV.', 'liga-basket-chile' ) );
+	}
+
+	$raw_rows = array();
+	while ( ( $data = fgetcsv( $handle, 0, ',' ) ) !== false ) {
+		$raw_rows[] = is_array( $data ) ? $data : array();
 	}
 
 	fclose( $handle );
 
-	return $rows;
+	if ( empty( $raw_rows ) ) {
+		return new WP_Error( 'import_csv_empty', __( 'El archivo CSV esta vacio.', 'liga-basket-chile' ) );
+	}
+
+	return liga_import_partidos_normalize_tabular_rows( $raw_rows );
+}
+
+/**
+ * Parsea Excel si PhpSpreadsheet esta cargado en el proyecto.
+ *
+ * @param string $file_path Ruta temporal.
+ * @return array<int, array<string, mixed>>|WP_Error
+ */
+function liga_import_partidos_parse_excel( $file_path ) {
+	if ( ! class_exists( '\PhpOffice\PhpSpreadsheet\IOFactory' ) ) {
+		$autoload_candidates = array(
+			get_template_directory() . '/vendor/autoload.php',
+			ABSPATH . 'vendor/autoload.php',
+		);
+
+		foreach ( $autoload_candidates as $autoload_path ) {
+			if ( file_exists( $autoload_path ) ) {
+				require_once $autoload_path;
+				break;
+			}
+		}
+	}
+
+	if ( ! class_exists( '\PhpOffice\PhpSpreadsheet\IOFactory' ) ) {
+		return new WP_Error(
+			'import_excel_reader_missing',
+			__( 'El servidor no tiene un lector Excel disponible. Exporta el calendario oficial a CSV manteniendo sus encabezados reales, o instala PhpSpreadsheet en el proyecto.', 'liga-basket-chile' )
+		);
+	}
+
+	try {
+		$spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load( $file_path );
+		$sheet       = $spreadsheet->getActiveSheet();
+		$raw_rows    = $sheet->toArray( null, true, true, false );
+	} catch ( Exception $exception ) {
+		return new WP_Error( 'import_excel_read_failed', __( 'No fue posible leer el archivo Excel.', 'liga-basket-chile' ) );
+	}
+
+	if ( empty( $raw_rows ) ) {
+		return new WP_Error( 'import_excel_empty', __( 'El archivo Excel esta vacio.', 'liga-basket-chile' ) );
+	}
+
+	return liga_import_partidos_normalize_tabular_rows( $raw_rows );
+}
+
+/**
+ * Parsea archivo de partidos segun extension.
+ *
+ * @param string $file_path Ruta temporal.
+ * @param string $extension Extension.
+ * @return array<int, array<string, mixed>>|WP_Error
+ */
+function liga_import_partidos_parse_file( $file_path, $extension ) {
+	$extension = strtolower( sanitize_key( (string) $extension ) );
+
+	if ( 'csv' === $extension ) {
+		return liga_import_partidos_parse_csv( $file_path );
+	}
+
+	if ( in_array( $extension, array( 'xls', 'xlsx' ), true ) ) {
+		return liga_import_partidos_parse_excel( $file_path );
+	}
+
+	return new WP_Error( 'import_file_type_invalid', __( 'Formato no soportado. Usa .xls, .xlsx o .csv.', 'liga-basket-chile' ) );
 }
 
 /**
@@ -427,12 +788,163 @@ function liga_import_partidos_is_valid_date( $fecha ) {
 }
 
 /**
- * Valida filas del CSV de partidos.
+ * Busca un partido existente para actualizarlo.
+ *
+ * @param int    $division_id Division.
+ * @param string $temporada Temporada.
+ * @param int    $local_id Local.
+ * @param int    $visita_id Visita.
+ * @param string $fecha Fecha.
+ * @param string $hora Hora.
+ * @param string $jornada Jornada.
+ * @return int
+ */
+function liga_import_partidos_find_existing_match_id( $division_id, $temporada, $local_id, $visita_id, $fecha = '', $hora = '', $jornada = '' ) {
+	$division_id = absint( $division_id );
+	$temporada   = liga_import_partidos_normalize_temporada( $temporada );
+	$local_id    = absint( $local_id );
+	$visita_id   = absint( $visita_id );
+	$fecha       = liga_import_partidos_normalize_text( $fecha );
+	$hora        = liga_import_partidos_normalize_text( $hora );
+	$jornada     = liga_import_partidos_normalize_text( $jornada );
+
+	if ( $division_id <= 0 || '' === $temporada || $local_id <= 0 || $visita_id <= 0 ) {
+		return 0;
+	}
+
+	$meta_query = array(
+		array(
+			'key'   => 'liga_division',
+			'value' => $division_id,
+			'type'  => 'NUMERIC',
+		),
+		array(
+			'key'   => 'liga_temporada',
+			'value' => $temporada,
+		),
+		array(
+			'key'   => 'liga_equipo_local',
+			'value' => $local_id,
+			'type'  => 'NUMERIC',
+		),
+		array(
+			'key'   => 'liga_equipo_visita',
+			'value' => $visita_id,
+			'type'  => 'NUMERIC',
+		),
+	);
+
+	if ( '' !== $fecha ) {
+		$meta_query[] = array(
+			'key'   => 'liga_fecha_partido',
+			'value' => $fecha,
+		);
+		$meta_query[] = array(
+			'key'   => 'liga_hora_partido',
+			'value' => $hora,
+		);
+	} elseif ( '' !== $jornada ) {
+		$meta_query[] = array(
+			'key'   => 'liga_jornada_partido',
+			'value' => $jornada,
+		);
+	}
+
+	$matches = get_posts(
+		array(
+			'post_type'      => 'partido',
+			'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
+			'posts_per_page' => 2,
+			'fields'         => 'ids',
+			'meta_query'     => $meta_query,
+		)
+	);
+
+	if ( ! is_array( $matches ) || 1 !== count( $matches ) ) {
+		return 0;
+	}
+
+	return (int) $matches[0];
+}
+
+/**
+ * Determina accion prevista y conflictos contra un partido existente.
+ *
+ * @param int                 $existing_id Partido existente.
+ * @param array<string,mixed> $resultado Resultado parseado.
+ * @return array{action:string,errors:array<int,string>}
+ */
+function liga_import_partidos_get_preview_action( $existing_id, $resultado ) {
+	$existing_id = absint( $existing_id );
+	$has_result  = ! empty( $resultado['has_result'] );
+
+	if ( $existing_id <= 0 ) {
+		return array(
+			'action' => $has_result ? 'create_played' : 'create_scheduled',
+			'errors' => array(),
+		);
+	}
+
+	$current_estado = sanitize_key( (string) get_post_meta( $existing_id, 'liga_estado_partido', true ) );
+	$current_played = in_array( $current_estado, array( 'jugado', 'finalizado' ), true );
+	$current_local  = (int) get_post_meta( $existing_id, 'liga_puntos_local', true );
+	$current_visita = (int) get_post_meta( $existing_id, 'liga_puntos_visita', true );
+
+	if ( $current_played && ! $has_result ) {
+		return array(
+			'action' => 'conflict',
+			'errors' => array( __( 'partido existente ya tiene resultado; el calendario no trae marcador y no se sobrescribira.', 'liga-basket-chile' ) ),
+		);
+	}
+
+	if ( $current_played && $has_result ) {
+		if ( $current_local !== (int) $resultado['puntos_local'] || $current_visita !== (int) $resultado['puntos_visita'] ) {
+			return array(
+				'action' => 'conflict',
+				'errors' => array( __( 'partido existente ya tiene un resultado distinto; revisa manualmente antes de sobrescribir.', 'liga-basket-chile' ) ),
+			);
+		}
+
+		return array(
+			'action' => 'update_played',
+			'errors' => array(),
+		);
+	}
+
+	return array(
+		'action' => $has_result ? 'update_result' : 'update_scheduled',
+		'errors' => array(),
+	);
+}
+
+/**
+ * Devuelve etiqueta administrativa para accion prevista.
+ *
+ * @param string $action Accion.
+ * @return string
+ */
+function liga_import_partidos_get_action_label( $action ) {
+	$labels = array(
+		'create_scheduled' => __( 'Crear programado', 'liga-basket-chile' ),
+		'create_played'    => __( 'Crear jugado', 'liga-basket-chile' ),
+		'update_scheduled' => __( 'Actualizar programado', 'liga-basket-chile' ),
+		'update_result'    => __( 'Actualizar resultado', 'liga-basket-chile' ),
+		'update_played'    => __( 'Actualizar jugado', 'liga-basket-chile' ),
+		'conflict'         => __( 'Conflicto', 'liga-basket-chile' ),
+		'skip_error'       => __( 'Omitir por error', 'liga-basket-chile' ),
+	);
+
+	return isset( $labels[ $action ] ) ? (string) $labels[ $action ] : (string) $action;
+}
+
+/**
+ * Valida filas del calendario oficial de partidos.
  *
  * @param array<int, array<string, mixed>> $rows Filas parseadas.
+ * @param array<string,mixed>              $context Contexto seleccionado.
  * @return array<string, mixed>
  */
-function liga_import_partidos_validate_rows( $rows ) {
+function liga_import_partidos_validate_rows( $rows, $context = array() ) {
 	$division_lookup = liga_import_partidos_get_division_lookup();
 	$team_cache      = array();
 	$file_seen       = array();
@@ -440,36 +952,47 @@ function liga_import_partidos_validate_rows( $rows ) {
 	$valid_rows      = array();
 	$invalid_rows    = array();
 
+	$context_division_id = isset( $context['division_id'] ) ? absint( $context['division_id'] ) : 0;
+	$context_temporada   = liga_import_partidos_normalize_temporada( isset( $context['temporada'] ) ? $context['temporada'] : '' );
+
 	foreach ( $rows as $row ) {
 		$line = isset( $row['line'] ) ? absint( $row['line'] ) : 0;
 
-		$division_raw = liga_import_partidos_normalize_text( isset( $row['division'] ) ? $row['division'] : '' );
-		$temporada    = liga_import_partidos_normalize_temporada( isset( $row['temporada'] ) ? $row['temporada'] : '' );
+		$division_raw = $context_division_id > 0
+			? ( isset( $division_lookup['items'][ $context_division_id ]['name'] ) ? (string) $division_lookup['items'][ $context_division_id ]['name'] : '' )
+			: liga_import_partidos_normalize_text( isset( $row['division'] ) ? $row['division'] : '' );
+		$temporada    = '' !== $context_temporada ? $context_temporada : liga_import_partidos_normalize_temporada( isset( $row['temporada'] ) ? $row['temporada'] : '' );
+		$jornada      = liga_import_partidos_normalize_text( isset( $row['jornada'] ) ? $row['jornada'] : '' );
 		$local_raw    = liga_import_partidos_normalize_text( isset( $row['equipo_local'] ) ? $row['equipo_local'] : '' );
 		$visita_raw   = liga_import_partidos_normalize_text( isset( $row['equipo_visitante'] ) ? $row['equipo_visitante'] : '' );
-		$fecha        = liga_import_partidos_normalize_text( isset( $row['fecha'] ) ? $row['fecha'] : '' );
-		$hora         = liga_import_partidos_normalize_text( isset( $row['hora'] ) ? $row['hora'] : '' );
+		$fecha        = liga_import_partidos_normalize_date_value( isset( $row['fecha'] ) ? $row['fecha'] : '' );
+		$hora         = liga_import_partidos_normalize_time_value( isset( $row['hora'] ) ? $row['hora'] : '' );
 		$recinto      = liga_import_partidos_normalize_text( isset( $row['recinto'] ) ? $row['recinto'] : '' );
 		$estado       = liga_import_partidos_normalize_estado( isset( $row['estado'] ) ? $row['estado'] : '' );
+		$resultado    = liga_import_partidos_parse_result_value( isset( $row['resultado'] ) ? $row['resultado'] : '' );
 
-		$errors      = array();
-		$division_id = 0;
-		$local_id    = 0;
-		$visita_id   = 0;
-
-		if ( '' === $division_raw ) {
-			$errors[] = __( 'division es obligatoria.', 'liga-basket-chile' );
-		} else {
-			$division_id = liga_import_partidos_resolve_division_id( $division_raw, $division_lookup );
-			if ( $division_id <= 0 ) {
-				$errors[] = __( 'division no existe en el sistema.', 'liga-basket-chile' );
-			}
+		if ( ! empty( $resultado['has_result'] ) ) {
+			$estado = 'jugado';
+		} elseif ( '' === liga_import_partidos_normalize_text( isset( $row['estado'] ) ? $row['estado'] : '' ) ) {
+			$estado = 'programado';
 		}
 
-		if ( '' === liga_import_partidos_normalize_text( isset( $row['temporada'] ) ? $row['temporada'] : '' ) ) {
-			$errors[] = __( 'temporada es obligatoria.', 'liga-basket-chile' );
-		} elseif ( '' === $temporada ) {
-			$errors[] = __( 'temporada debe tener formato YYYY.', 'liga-basket-chile' );
+		$errors      = array();
+		$division_id = $context_division_id;
+		$local_id    = 0;
+		$visita_id   = 0;
+		$existing_id = 0;
+
+		if ( $division_id <= 0 && '' !== $division_raw ) {
+			$division_id = liga_import_partidos_resolve_division_id( $division_raw, $division_lookup );
+		}
+
+		if ( $division_id <= 0 ) {
+			$errors[] = __( 'selecciona una division valida para este calendario.', 'liga-basket-chile' );
+		}
+
+		if ( '' === $temporada ) {
+			$errors[] = __( 'selecciona una temporada valida con formato YYYY.', 'liga-basket-chile' );
 		}
 
 		if ( $division_id > 0 && '' !== $temporada ) {
@@ -487,9 +1010,7 @@ function liga_import_partidos_validate_rows( $rows ) {
 			$errors[] = __( 'equipo_visitante es obligatorio.', 'liga-basket-chile' );
 		}
 
-		if ( '' === $fecha ) {
-			$errors[] = __( 'fecha es obligatoria.', 'liga-basket-chile' );
-		} elseif ( ! liga_import_partidos_is_valid_date( $fecha ) ) {
+		if ( '' !== $fecha && ! liga_import_partidos_is_valid_date( $fecha ) ) {
 			$errors[] = __( 'fecha invalida. Usa formato YYYY-MM-DD.', 'liga-basket-chile' );
 		}
 
@@ -501,8 +1022,22 @@ function liga_import_partidos_validate_rows( $rows ) {
 			$errors[] = __( 'estado invalido para el sistema.', 'liga-basket-chile' );
 		}
 
-		if ( in_array( $estado, array( 'jugado', 'finalizado' ), true ) ) {
-			$errors[] = __( 'este importador es para programacion. Usa estado programado/suspendido/cancelado.', 'liga-basket-chile' );
+		if ( '' !== $resultado['error'] ) {
+			$errors[] = (string) $resultado['error'];
+		}
+
+		if ( empty( $resultado['has_result'] ) && in_array( $estado, array( 'jugado', 'finalizado' ), true ) ) {
+			$errors[] = __( 'estado jugado/finalizado requiere marcador valido en Resultado.', 'liga-basket-chile' );
+		}
+
+		if ( ! empty( $resultado['has_result'] ) && 'ninguna' === $resultado['incomparecencia'] ) {
+			if ( (int) $resultado['puntos_local'] === (int) $resultado['puntos_visita'] ) {
+				$errors[] = __( 'resultado invalido: no se permiten empates.', 'liga-basket-chile' );
+			}
+
+			if ( 0 === (int) $resultado['puntos_local'] && 0 === (int) $resultado['puntos_visita'] ) {
+				$errors[] = __( 'resultado invalido: no se permite marcador 0-0.', 'liga-basket-chile' );
+			}
 		}
 
 		if ( $division_id > 0 && '' !== $temporada && '' !== $local_raw ) {
@@ -541,6 +1076,7 @@ function liga_import_partidos_validate_rows( $rows ) {
 					$temporada,
 					(string) $local_id,
 					(string) $visita_id,
+					$jornada,
 					$fecha,
 					$hora,
 				)
@@ -556,17 +1092,24 @@ function liga_import_partidos_validate_rows( $rows ) {
 				$file_seen[ $match_key ] = $line;
 			}
 
-			if ( liga_import_partidos_exists_in_system( $division_id, $temporada, $local_id, $visita_id, $fecha, $hora ) ) {
-				$errors[] = __( 'partido duplicado en el sistema para el mismo contexto/fecha/hora.', 'liga-basket-chile' );
+			$existing_id = liga_import_partidos_find_existing_match_id( $division_id, $temporada, $local_id, $visita_id, $fecha, $hora, $jornada );
+			$preview_action = liga_import_partidos_get_preview_action( $existing_id, $resultado );
+			if ( ! empty( $preview_action['errors'] ) ) {
+				$errors = array_merge( $errors, $preview_action['errors'] );
 			}
 		}
 
 		$division_name = $division_id > 0 && isset( $division_lookup['items'][ $division_id ]['name'] )
 			? (string) $division_lookup['items'][ $division_id ]['name']
 			: $division_raw;
+		$import_action = isset( $preview_action['action'] ) ? (string) $preview_action['action'] : ( $existing_id > 0 ? 'update_scheduled' : 'create_scheduled' );
+		if ( ! empty( $errors ) && 'conflict' !== $import_action ) {
+			$import_action = 'skip_error';
+		}
 
 		$validated_row = array(
 			'line'             => $line,
+			'jornada'          => $jornada,
 			'division'         => $division_name,
 			'division_id'      => $division_id,
 			'temporada'        => $temporada,
@@ -578,6 +1121,12 @@ function liga_import_partidos_validate_rows( $rows ) {
 			'hora'             => $hora,
 			'recinto'          => $recinto,
 			'estado'           => $estado,
+			'resultado'        => ! empty( $resultado['has_result'] ) ? (string) $resultado['puntos_local'] . '-' . (string) $resultado['puntos_visita'] : '',
+			'puntos_local'     => (int) $resultado['puntos_local'],
+			'puntos_visita'    => (int) $resultado['puntos_visita'],
+			'incomparecencia'  => (string) $resultado['incomparecencia'],
+			'existing_match_id' => $existing_id,
+			'import_action'    => $import_action,
 			'match_key'        => $match_key,
 			'errors'           => $errors,
 			'is_valid'         => empty( $errors ),
@@ -657,12 +1206,12 @@ function liga_import_partidos_delete_preview( $token, $user_id ) {
 }
 
 /**
- * Inserta partido validado en estructura real del sistema.
+ * Crea o actualiza partido validado en estructura real del sistema.
  *
  * @param array<string,mixed> $row Fila validada.
- * @return int|WP_Error
+ * @return array{match_id:int,action:string,recalculated:bool}|WP_Error
  */
-function liga_import_partidos_insert_match( $row ) {
+function liga_import_partidos_upsert_match( $row ) {
 	$division_id = isset( $row['division_id'] ) ? absint( $row['division_id'] ) : 0;
 	$temporada   = liga_import_partidos_normalize_temporada( isset( $row['temporada'] ) ? $row['temporada'] : '' );
 	$local_id    = isset( $row['equipo_local_id'] ) ? absint( $row['equipo_local_id'] ) : 0;
@@ -670,10 +1219,17 @@ function liga_import_partidos_insert_match( $row ) {
 	$fecha       = liga_import_partidos_normalize_text( isset( $row['fecha'] ) ? $row['fecha'] : '' );
 	$hora        = liga_import_partidos_normalize_text( isset( $row['hora'] ) ? $row['hora'] : '' );
 	$recinto     = liga_import_partidos_normalize_text( isset( $row['recinto'] ) ? $row['recinto'] : '' );
+	$jornada     = liga_import_partidos_normalize_text( isset( $row['jornada'] ) ? $row['jornada'] : '' );
 	$estado      = liga_import_partidos_normalize_estado( isset( $row['estado'] ) ? $row['estado'] : '' );
+	$puntos_local = isset( $row['puntos_local'] ) ? absint( $row['puntos_local'] ) : 0;
+	$puntos_visita = isset( $row['puntos_visita'] ) ? absint( $row['puntos_visita'] ) : 0;
+	$incomparecencia = isset( $row['incomparecencia'] ) ? sanitize_key( (string) $row['incomparecencia'] ) : 'ninguna';
+	if ( ! in_array( $incomparecencia, array( 'ninguna', 'local_no_comparecio', 'visita_no_comparecio' ), true ) ) {
+		$incomparecencia = 'ninguna';
+	}
 
-	if ( $division_id <= 0 || '' === $temporada || $local_id <= 0 || $visita_id <= 0 || '' === $fecha ) {
-		return new WP_Error( 'import_match_invalid', __( 'Fila invalida para insercion.', 'liga-basket-chile' ) );
+	if ( $division_id <= 0 || '' === $temporada || $local_id <= 0 || $visita_id <= 0 ) {
+		return new WP_Error( 'import_match_invalid', __( 'Fila invalida para importacion.', 'liga-basket-chile' ) );
 	}
 
 	$matchup_validation = liga_validate_basketball_matchup( $local_id, $visita_id, $division_id, $temporada );
@@ -681,19 +1237,35 @@ function liga_import_partidos_insert_match( $row ) {
 		return $matchup_validation;
 	}
 
-	if ( liga_import_partidos_exists_in_system( $division_id, $temporada, $local_id, $visita_id, $fecha, $hora ) ) {
-		return new WP_Error( 'import_match_duplicate', __( 'Partido duplicado detectado antes de guardar.', 'liga-basket-chile' ) );
+	$post_title = liga_get_equipo_nombre( $local_id ) . ' vs ' . liga_get_equipo_nombre( $visita_id );
+	$post_id    = isset( $row['existing_match_id'] ) ? absint( $row['existing_match_id'] ) : 0;
+	if ( $post_id <= 0 ) {
+		$post_id = liga_import_partidos_find_existing_match_id( $division_id, $temporada, $local_id, $visita_id, $fecha, $hora, $jornada );
 	}
 
-	$post_title = liga_get_equipo_nombre( $local_id ) . ' vs ' . liga_get_equipo_nombre( $visita_id );
-	$post_id    = wp_insert_post(
-		array(
-			'post_type'   => 'partido',
-			'post_status' => 'publish',
-			'post_title'  => $post_title,
-		),
-		true
-	);
+	$action = 'update';
+	if ( $post_id <= 0 ) {
+		$action  = 'create';
+		$post_id = wp_insert_post(
+			array(
+				'post_type'   => 'partido',
+				'post_status' => 'publish',
+				'post_title'  => $post_title,
+			),
+			true
+		);
+	} else {
+		$update_title = wp_update_post(
+			array(
+				'ID'         => $post_id,
+				'post_title' => $post_title,
+			),
+			true
+		);
+		if ( is_wp_error( $update_title ) ) {
+			return $update_title;
+		}
+	}
 
 	if ( is_wp_error( $post_id ) ) {
 		return $post_id;
@@ -707,18 +1279,27 @@ function liga_import_partidos_insert_match( $row ) {
 		'liga_fecha_partido'   => $fecha,
 		'liga_hora_partido'    => $hora,
 		'liga_cancha'          => $recinto,
+		'liga_jornada_partido' => $jornada,
 		'liga_estado_partido'  => $estado,
-		'liga_puntos_local'    => 0,
-		'liga_puntos_visita'   => 0,
-		'liga_incomparecencia' => 'ninguna',
-		'liga_observaciones'   => '',
+		'liga_puntos_local'    => $puntos_local,
+		'liga_puntos_visita'   => $puntos_visita,
+		'liga_incomparecencia' => $incomparecencia,
 	);
 
 	foreach ( $meta_fields as $meta_key => $meta_value ) {
 		update_post_meta( $post_id, $meta_key, $meta_value );
 	}
 
-	return (int) $post_id;
+	$recalculated = false;
+	if ( function_exists( 'liga_maybe_recalculate_standings_for_match' ) ) {
+		$recalculated = (bool) liga_maybe_recalculate_standings_for_match( (int) $post_id );
+	}
+
+	return array(
+		'match_id'     => (int) $post_id,
+		'action'       => $action,
+		'recalculated' => $recalculated,
+	);
 }
 
 /**
@@ -743,16 +1324,38 @@ function liga_handle_admin_import_partidos_actions() {
 	if ( 'validate_csv' === $action ) {
 		check_admin_referer( 'liga_validate_partidos_csv', 'liga_validate_partidos_csv_nonce' );
 
-		if ( empty( $_FILES['liga_partidos_csv'] ) || ! is_array( $_FILES['liga_partidos_csv'] ) ) {
-			liga_add_admin_alert( 'error', __( 'Debes seleccionar un archivo CSV.', 'liga-basket-chile' ) );
+		$context_division_id = isset( $_POST['liga_import_division'] ) ? absint( wp_unslash( $_POST['liga_import_division'] ) ) : 0;
+		$context_temporada   = liga_import_partidos_normalize_temporada( isset( $_POST['liga_import_temporada'] ) ? wp_unslash( $_POST['liga_import_temporada'] ) : '' );
+
+		if ( $context_division_id <= 0 || ! liga_is_valid_post_type_id( $context_division_id, 'division' ) ) {
+			liga_add_admin_alert( 'error', __( 'Debes seleccionar una division valida para el calendario.', 'liga-basket-chile' ) );
 			wp_safe_redirect( liga_import_partidos_get_page_url() );
 			exit;
 		}
 
-		$file       = $_FILES['liga_partidos_csv'];
+		if ( '' === $context_temporada ) {
+			liga_add_admin_alert( 'error', __( 'Debes seleccionar una temporada valida para el calendario.', 'liga-basket-chile' ) );
+			wp_safe_redirect( liga_import_partidos_get_page_url() );
+			exit;
+		}
+
+		$division_temporada = liga_get_division_temporada_label( $context_division_id );
+		if ( liga_is_valid_temporada_label( $division_temporada ) && $division_temporada !== $context_temporada ) {
+			liga_add_admin_alert( 'error', __( 'La temporada seleccionada no coincide con la temporada configurada en la division.', 'liga-basket-chile' ) );
+			wp_safe_redirect( liga_import_partidos_get_page_url() );
+			exit;
+		}
+
+		if ( empty( $_FILES['liga_partidos_archivo'] ) || ! is_array( $_FILES['liga_partidos_archivo'] ) ) {
+			liga_add_admin_alert( 'error', __( 'Debes seleccionar un archivo de calendario.', 'liga-basket-chile' ) );
+			wp_safe_redirect( liga_import_partidos_get_page_url() );
+			exit;
+		}
+
+		$file       = $_FILES['liga_partidos_archivo'];
 		$error_code = isset( $file['error'] ) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
 		if ( UPLOAD_ERR_OK !== $error_code ) {
-			liga_add_admin_alert( 'error', __( 'No fue posible subir el archivo CSV.', 'liga-basket-chile' ) );
+			liga_add_admin_alert( 'error', __( 'No fue posible subir el archivo de calendario.', 'liga-basket-chile' ) );
 			wp_safe_redirect( liga_import_partidos_get_page_url() );
 			exit;
 		}
@@ -768,28 +1371,34 @@ function liga_handle_admin_import_partidos_actions() {
 		}
 
 		if ( $size <= 0 ) {
-			liga_add_admin_alert( 'error', __( 'El archivo CSV esta vacio.', 'liga-basket-chile' ) );
+			liga_add_admin_alert( 'error', __( 'El archivo de calendario esta vacio.', 'liga-basket-chile' ) );
 			wp_safe_redirect( liga_import_partidos_get_page_url() );
 			exit;
 		}
 
 		$extension = strtolower( (string) pathinfo( $name, PATHINFO_EXTENSION ) );
-		if ( 'csv' !== $extension ) {
-			liga_add_admin_alert( 'error', __( 'El archivo debe tener extension .csv.', 'liga-basket-chile' ) );
+		if ( ! in_array( $extension, liga_import_partidos_supported_extensions(), true ) ) {
+			liga_add_admin_alert( 'error', __( 'El archivo debe tener extension .xls, .xlsx o .csv.', 'liga-basket-chile' ) );
 			wp_safe_redirect( liga_import_partidos_get_page_url() );
 			exit;
 		}
 
-		$rows = liga_import_partidos_parse_csv( $tmp_name );
+		$rows = liga_import_partidos_parse_file( $tmp_name, $extension );
 		if ( is_wp_error( $rows ) ) {
 			liga_add_admin_alert( 'error', $rows->get_error_message() );
 			wp_safe_redirect( liga_import_partidos_get_page_url() );
 			exit;
 		}
 
-		$validation = liga_import_partidos_validate_rows( $rows );
+		$validation = liga_import_partidos_validate_rows(
+			$rows,
+			array(
+				'division_id' => $context_division_id,
+				'temporada'   => $context_temporada,
+			)
+		);
 		if ( empty( $validation['summary']['total'] ) ) {
-			liga_add_admin_alert( 'warning', __( 'No se detectaron filas de datos en el CSV.', 'liga-basket-chile' ) );
+			liga_add_admin_alert( 'warning', __( 'No se detectaron filas de datos en el calendario.', 'liga-basket-chile' ) );
 			wp_safe_redirect( liga_import_partidos_get_page_url() );
 			exit;
 		}
@@ -836,22 +1445,27 @@ function liga_handle_admin_import_partidos_actions() {
 		$payload    = $preview['payload'];
 		$valid_rows = isset( $payload['valid_rows'] ) && is_array( $payload['valid_rows'] ) ? $payload['valid_rows'] : array();
 		$created    = 0;
+		$updated    = 0;
 		$skipped    = 0;
 		$failed     = 0;
+		$recalculated = 0;
 
 		foreach ( $valid_rows as $row ) {
-			$insert = liga_import_partidos_insert_match( $row );
-			if ( is_wp_error( $insert ) ) {
-				$error_code = (string) $insert->get_error_code();
-				if ( 'import_match_duplicate' === $error_code ) {
-					$skipped++;
-				} else {
-					$failed++;
-				}
+			$upsert = liga_import_partidos_upsert_match( $row );
+			if ( is_wp_error( $upsert ) ) {
+				$failed++;
 				continue;
 			}
 
-			$created++;
+			if ( isset( $upsert['action'] ) && 'update' === $upsert['action'] ) {
+				$updated++;
+			} else {
+				$created++;
+			}
+
+			if ( ! empty( $upsert['recalculated'] ) ) {
+				$recalculated++;
+			}
 		}
 
 		liga_import_partidos_delete_preview( $token, $user_id );
@@ -859,11 +1473,13 @@ function liga_handle_admin_import_partidos_actions() {
 		liga_add_admin_alert(
 			'success',
 			sprintf(
-				/* translators: 1: creados, 2: omitidos, 3: fallidos */
-				__( 'Importacion finalizada. Creados: %1$d | Omitidos: %2$d | Fallidos: %3$d', 'liga-basket-chile' ),
+				/* translators: 1: creados, 2: actualizados, 3: omitidos, 4: fallidos, 5: recalculos */
+				__( 'Importacion finalizada. Creados: %1$d | Actualizados: %2$d | Omitidos: %3$d | Fallidos: %4$d | Recalculos de tabla: %5$d', 'liga-basket-chile' ),
 				$created,
+				$updated,
 				$skipped,
-				$failed
+				$failed,
+				$recalculated
 			)
 		);
 
@@ -872,8 +1488,10 @@ function liga_handle_admin_import_partidos_actions() {
 				array(
 					'import_done'    => 1,
 					'import_created' => $created,
+					'import_updated' => $updated,
 					'import_skipped' => $skipped,
 					'import_failed'  => $failed,
+					'import_recalculated' => $recalculated,
 				)
 			)
 		);
@@ -883,7 +1501,7 @@ function liga_handle_admin_import_partidos_actions() {
 add_action( 'admin_init', 'liga_handle_admin_import_partidos_actions' );
 
 /**
- * Descarga plantilla oficial de partidos CSV.
+ * Descarga ejemplo CSV compatible con el calendario oficial.
  *
  * @return void
  */
@@ -896,15 +1514,15 @@ function liga_download_partidos_csv_template() {
 
 	nocache_headers();
 	header( 'Content-Type: text/csv; charset=UTF-8' );
-	header( 'Content-Disposition: attachment; filename=plantilla-partidos-liga.csv' );
+	header( 'Content-Disposition: attachment; filename=ejemplo-calendario-oficial-liga.csv' );
 
 	echo "\xEF\xBB\xBF";
 
 	$output = fopen( 'php://output', 'w' );
 	if ( false !== $output ) {
-		fputcsv( $output, array( 'division', 'temporada', 'equipo_local', 'equipo_visitante', 'fecha', 'hora', 'recinto', 'estado' ) );
-		fputcsv( $output, array( 'Primera', '2026', 'Club Deportivo Oriente', 'Leones de Concepcion', '2026-05-10', '20:00', 'Gimnasio Municipal', 'programado' ) );
-		fputcsv( $output, array( 'U17', '2026', 'Halcones del Sur', 'Academia Bio Bio', '2026-05-11', '18:00', 'Cancha 2', 'programado' ) );
+		fputcsv( $output, array( 'Jornada', 'Equipo 1', 'Resultado', 'Equipo 2', 'Fecha', 'Hora', 'Lugar' ) );
+		fputcsv( $output, array( 'Jornada 1', 'AV Express', '73-39', 'Vipla', '2026-06-07', '10:00', 'Gimnasio Municipal' ) );
+		fputcsv( $output, array( 'Jornada 2', 'Equipo A', '', 'Equipo B', '', '', '' ) );
 		fclose( $output );
 	}
 
@@ -930,28 +1548,54 @@ function liga_render_admin_import_partidos_page() {
 	$summary      = isset( $payload['summary'] ) && is_array( $payload['summary'] ) ? $payload['summary'] : array();
 	$preview_rows = isset( $payload['rows'] ) && is_array( $payload['rows'] ) ? $payload['rows'] : array();
 	$valid_rows   = isset( $payload['valid_rows'] ) && is_array( $payload['valid_rows'] ) ? $payload['valid_rows'] : array();
+	$divisions    = liga_get_posts_map( 'division' );
+	$temporadas   = liga_get_available_temporadas();
 	?>
 	<div class="wrap">
 		<h1><?php esc_html_e( 'Importar Partidos', 'liga-basket-chile' ); ?></h1>
-		<p><?php esc_html_e( 'Carga masiva de partidos programados integrada al mismo sistema real de fixture, administracion y validacion deportiva.', 'liga-basket-chile' ); ?></p>
+		<p><?php esc_html_e( 'Importa el calendario oficial del gestor de competencia para crear programacion, actualizar resultados y recalcular tablas desde partidos reales.', 'liga-basket-chile' ); ?></p>
 
 		<p>
 			<a class="button button-secondary" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=liga_download_partidos_csv_template' ), 'liga_download_partidos_csv_template' ) ); ?>">
-				<?php esc_html_e( 'Descargar plantilla CSV', 'liga-basket-chile' ); ?>
+				<?php esc_html_e( 'Descargar ejemplo CSV compatible', 'liga-basket-chile' ); ?>
 			</a>
 		</p>
 
 		<div class="card">
-			<h2><?php esc_html_e( 'Paso 1: Validar archivo', 'liga-basket-chile' ); ?></h2>
+			<h2><?php esc_html_e( 'Paso 1: Validar calendario oficial', 'liga-basket-chile' ); ?></h2>
 			<form method="post" enctype="multipart/form-data">
 				<?php wp_nonce_field( 'liga_validate_partidos_csv', 'liga_validate_partidos_csv_nonce' ); ?>
 				<input type="hidden" name="liga_import_partidos_action" value="validate_csv">
 				<table class="form-table" role="presentation">
 					<tr>
-						<th><label for="liga_partidos_csv"><?php esc_html_e( 'Archivo CSV', 'liga-basket-chile' ); ?></label></th>
+						<th><label for="liga_import_division"><?php esc_html_e( 'Division / categoria', 'liga-basket-chile' ); ?></label></th>
 						<td>
-							<input type="file" id="liga_partidos_csv" name="liga_partidos_csv" accept=".csv,text/csv" required>
-							<p class="description"><?php esc_html_e( 'Encabezado exacto requerido: division,temporada,equipo_local,equipo_visitante,fecha,hora,recinto,estado', 'liga-basket-chile' ); ?></p>
+							<select id="liga_import_division" name="liga_import_division" required>
+								<option value=""><?php esc_html_e( 'Seleccionar', 'liga-basket-chile' ); ?></option>
+								<?php foreach ( $divisions as $division_id => $division_title ) : ?>
+									<option value="<?php echo esc_attr( (string) $division_id ); ?>"><?php echo esc_html( (string) $division_title ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description"><?php esc_html_e( 'El archivo no se usa para decidir categoria; este contexto manda sobre cualquier columna del Excel.', 'liga-basket-chile' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="liga_import_temporada"><?php esc_html_e( 'Temporada', 'liga-basket-chile' ); ?></label></th>
+						<td>
+							<select id="liga_import_temporada" name="liga_import_temporada" required>
+								<option value=""><?php esc_html_e( 'Seleccionar', 'liga-basket-chile' ); ?></option>
+								<?php foreach ( $temporadas as $temporada_key => $temporada_label ) : ?>
+									<option value="<?php echo esc_attr( (string) $temporada_key ); ?>"><?php echo esc_html( (string) $temporada_label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description"><?php esc_html_e( 'Ejemplo: 2026. La tabla se recalcula solo para esta division y temporada.', 'liga-basket-chile' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="liga_partidos_archivo"><?php esc_html_e( 'Archivo de calendario', 'liga-basket-chile' ); ?></label></th>
+						<td>
+							<input type="file" id="liga_partidos_archivo" name="liga_partidos_archivo" accept=".xls,.xlsx,.csv,text/csv" required>
+							<p class="description"><?php esc_html_e( 'Encabezados esperados del gestor: Jornada, Equipo 1, Resultado, Equipo 2, Fecha, Hora, Lugar. CSV mantiene compatibilidad si el servidor no tiene lector Excel.', 'liga-basket-chile' ); ?></p>
 						</td>
 					</tr>
 				</table>
@@ -966,11 +1610,17 @@ function liga_render_admin_import_partidos_page() {
 					<strong><?php esc_html_e( 'Creados', 'liga-basket-chile' ); ?>:</strong>
 					<?php echo esc_html( (string) absint( isset( $_GET['import_created'] ) ? wp_unslash( $_GET['import_created'] ) : 0 ) ); ?>
 					|
+					<strong><?php esc_html_e( 'Actualizados', 'liga-basket-chile' ); ?>:</strong>
+					<?php echo esc_html( (string) absint( isset( $_GET['import_updated'] ) ? wp_unslash( $_GET['import_updated'] ) : 0 ) ); ?>
+					|
 					<strong><?php esc_html_e( 'Omitidos', 'liga-basket-chile' ); ?>:</strong>
 					<?php echo esc_html( (string) absint( isset( $_GET['import_skipped'] ) ? wp_unslash( $_GET['import_skipped'] ) : 0 ) ); ?>
 					|
 					<strong><?php esc_html_e( 'Fallidos', 'liga-basket-chile' ); ?>:</strong>
 					<?php echo esc_html( (string) absint( isset( $_GET['import_failed'] ) ? wp_unslash( $_GET['import_failed'] ) : 0 ) ); ?>
+					|
+					<strong><?php esc_html_e( 'Recalculos', 'liga-basket-chile' ); ?>:</strong>
+					<?php echo esc_html( (string) absint( isset( $_GET['import_recalculated'] ) ? wp_unslash( $_GET['import_recalculated'] ) : 0 ) ); ?>
 				</p>
 			</div>
 		<?php endif; ?>
@@ -993,15 +1643,18 @@ function liga_render_admin_import_partidos_page() {
 					<thead>
 						<tr>
 							<th><?php esc_html_e( 'Fila', 'liga-basket-chile' ); ?></th>
+							<th><?php esc_html_e( 'Jornada', 'liga-basket-chile' ); ?></th>
 							<th><?php esc_html_e( 'Division', 'liga-basket-chile' ); ?></th>
 							<th><?php esc_html_e( 'Temporada', 'liga-basket-chile' ); ?></th>
-							<th><?php esc_html_e( 'Local', 'liga-basket-chile' ); ?></th>
-							<th><?php esc_html_e( 'Visitante', 'liga-basket-chile' ); ?></th>
+							<th><?php esc_html_e( 'Equipo local', 'liga-basket-chile' ); ?></th>
+							<th><?php esc_html_e( 'Resultado', 'liga-basket-chile' ); ?></th>
+							<th><?php esc_html_e( 'Equipo visitante', 'liga-basket-chile' ); ?></th>
 							<th><?php esc_html_e( 'Fecha', 'liga-basket-chile' ); ?></th>
 							<th><?php esc_html_e( 'Hora', 'liga-basket-chile' ); ?></th>
 							<th><?php esc_html_e( 'Recinto', 'liga-basket-chile' ); ?></th>
-							<th><?php esc_html_e( 'Estado', 'liga-basket-chile' ); ?></th>
-							<th><?php esc_html_e( 'Resultado', 'liga-basket-chile' ); ?></th>
+							<th><?php esc_html_e( 'Accion', 'liga-basket-chile' ); ?></th>
+							<th><?php esc_html_e( 'Estado resultante', 'liga-basket-chile' ); ?></th>
+							<th><?php esc_html_e( 'Validacion', 'liga-basket-chile' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1012,13 +1665,16 @@ function liga_render_admin_import_partidos_page() {
 							?>
 							<tr>
 								<td><?php echo esc_html( (string) ( isset( $row['line'] ) ? (int) $row['line'] : 0 ) ); ?></td>
+								<td><?php echo esc_html( (string) ( isset( $row['jornada'] ) ? $row['jornada'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['division'] ) ? $row['division'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['temporada'] ) ? $row['temporada'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['equipo_local'] ) ? $row['equipo_local'] : '' ) ); ?></td>
+								<td><?php echo esc_html( (string) ( isset( $row['resultado'] ) ? $row['resultado'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['equipo_visitante'] ) ? $row['equipo_visitante'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['fecha'] ) ? $row['fecha'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['hora'] ) ? $row['hora'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['recinto'] ) ? $row['recinto'] : '' ) ); ?></td>
+								<td><?php echo esc_html( liga_import_partidos_get_action_label( isset( $row['import_action'] ) ? (string) $row['import_action'] : '' ) ); ?></td>
 								<td><?php echo esc_html( (string) ( isset( $row['estado'] ) ? $row['estado'] : '' ) ); ?></td>
 								<td>
 									<?php if ( $is_valid ) : ?>

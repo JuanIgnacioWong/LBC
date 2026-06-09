@@ -230,10 +230,14 @@ function liga_render_theme_options_page() {
 
 			<h2><?php esc_html_e( 'Reglamento Deportivo', 'liga-basket-chile' ); ?></h2>
 			<table class="form-table" role="presentation">
-				<?php liga_render_option_field( 'standings_points_win', __( 'Puntos por victoria', 'liga-basket-chile' ), 'number' ); ?>
-				<?php liga_render_option_field( 'standings_points_loss', __( 'Puntos por derrota', 'liga-basket-chile' ), 'number' ); ?>
-				<?php liga_render_option_field( 'standings_points_walkover_win', __( 'Puntos por victoria por incomparecencia', 'liga-basket-chile' ), 'number' ); ?>
-				<?php liga_render_option_field( 'standings_points_walkover_loss', __( 'Puntos por incomparecencia', 'liga-basket-chile' ), 'number' ); ?>
+				<tr>
+					<th><?php esc_html_e( 'Partido jugado', 'liga-basket-chile' ); ?></th>
+					<td><?php esc_html_e( 'Ganador +2 pts. Perdedor +1 pt.', 'liga-basket-chile' ); ?></td>
+				</tr>
+				<tr>
+					<th><?php esc_html_e( 'Incomparecencia', 'liga-basket-chile' ); ?></th>
+					<td><?php esc_html_e( 'Ganador +2 pts. Equipo ausente +0 pts e INC +1.', 'liga-basket-chile' ); ?></td>
+				</tr>
 			</table>
 
 			<?php submit_button( __( 'Guardar cambios', 'liga-basket-chile' ) ); ?>
