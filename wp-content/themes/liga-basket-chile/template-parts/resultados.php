@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $matches_archive = get_post_type_archive_link( 'partido' );
 if ( ! $matches_archive ) {
-	$matches_archive = home_url( '/partido' );
+	$matches_archive = home_url( '/partidos' );
 }
 
 $defaults = array(

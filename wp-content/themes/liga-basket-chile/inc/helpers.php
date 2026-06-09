@@ -25,6 +25,63 @@ function liga_get_option( $key, $default = '' ) {
 }
 
 /**
+ * Obtiene opcion de tema priorizando `liga_theme_options` con fallback a `theme_mod`.
+ *
+ * @param string $key Clave de opcion.
+ * @param mixed  $default Valor por defecto.
+ * @return mixed
+ */
+function liga_get_theme_option( $key, $default = '' ) {
+	$key     = sanitize_key( (string) $key );
+	$options = get_option( 'liga_theme_options', array() );
+
+	if ( is_array( $options ) && array_key_exists( $key, $options ) ) {
+		return $options[ $key ];
+	}
+
+	$legacy_option_fallback = array(
+		'footer_social_instagram' => 'social_instagram',
+		'footer_social_youtube'   => 'social_youtube',
+		'footer_contact_email'    => 'contact_email',
+		'footer_contact_phone'    => 'contact_phone',
+	);
+
+	if ( isset( $legacy_option_fallback[ $key ] ) && is_array( $options ) ) {
+		$legacy_key = $legacy_option_fallback[ $key ];
+		if ( array_key_exists( $legacy_key, $options ) ) {
+			return $options[ $legacy_key ];
+		}
+	}
+
+	$theme_mod_fallback = array(
+		'footer_social_instagram' => 'liga_social_instagram',
+		'footer_social_x'         => 'liga_social_x',
+		'footer_social_youtube'   => 'liga_social_youtube',
+		'footer_social_tiktok'    => 'liga_social_tiktok',
+		'footer_contact_address_1' => 'liga_contact_address_1',
+		'footer_contact_address_2' => 'liga_contact_address_2',
+		'footer_contact_email'    => 'liga_contact_email',
+		'footer_contact_phone'    => 'liga_contact_phone',
+		'footer_logo_id'          => 'custom_logo',
+	);
+
+	if ( isset( $theme_mod_fallback[ $key ] ) ) {
+		$mod_key   = $theme_mod_fallback[ $key ];
+		$mod_value = get_theme_mod( $mod_key, null );
+
+		if ( null !== $mod_value && '' !== $mod_value ) {
+			return $mod_value;
+		}
+
+		if ( 'footer_logo_id' === $key ) {
+			return absint( get_theme_mod( 'custom_logo', 0 ) );
+		}
+	}
+
+	return $default;
+}
+
+/**
  * Retorna temporada activa por defecto.
  *
  * @return string
@@ -594,7 +651,7 @@ function liga_fallback_legal_menu() {
 function liga_fallback_primary_menu() {
 	echo '<ul id="primary-menu" class="liga-menu">';
 	echo '<li><a href="' . esc_url( home_url( '/' ) ) . '">' . esc_html__( 'Inicio', 'liga-basket-chile' ) . '</a></li>';
-	echo '<li><a href="' . esc_url( home_url( '/partido' ) ) . '">' . esc_html__( 'Partidos', 'liga-basket-chile' ) . '</a></li>';
+	echo '<li><a href="' . esc_url( home_url( '/partidos' ) ) . '">' . esc_html__( 'Partidos', 'liga-basket-chile' ) . '</a></li>';
 	echo '<li><a href="' . esc_url( home_url( '/equipo' ) ) . '">' . esc_html__( 'Equipos', 'liga-basket-chile' ) . '</a></li>';
 	echo '<li><a href="' . esc_url( home_url( '/noticias' ) ) . '">' . esc_html__( 'Noticias', 'liga-basket-chile' ) . '</a></li>';
 	echo '<li><a href="' . esc_url( home_url( '/contacto' ) ) . '">' . esc_html__( 'Contacto', 'liga-basket-chile' ) . '</a></li>';
@@ -913,5 +970,96 @@ function liga_get_home_hero_banner_data() {
 		'show_controls'     => $is_slider,
 		'autoplay'          => $is_slider ? (bool) $slides[0]['autoplay'] : false,
 		'autoplay_interval' => 5000,
+	);
+}
+
+/**
+ * Obtiene sponsors activos para el home.
+ *
+ * @param int $limit Cantidad maxima de sponsors.
+ * @return array<int, array<string, mixed>>
+ */
+function liga_get_home_sponsors( $limit = 12 ) {
+	$limit = absint( $limit );
+	if ( $limit <= 0 ) {
+		$limit = 12;
+	}
+
+	$query = new WP_Query(
+		array(
+			'post_type'      => 'liga_sponsor',
+			'post_status'    => 'publish',
+			'posts_per_page' => $limit,
+			'orderby'        => array(
+				'menu_order' => 'ASC',
+				'title'      => 'ASC',
+			),
+			'meta_query'     => array(
+				array(
+					'key'     => '_liga_sponsor_active',
+					'value'   => '1',
+					'compare' => '=',
+				),
+			),
+		)
+	);
+
+	if ( ! $query->have_posts() ) {
+		return array();
+	}
+
+	$sponsors = array();
+	foreach ( $query->posts as $sponsor_post ) {
+		$sponsor_id = (int) $sponsor_post->ID;
+		if ( ! has_post_thumbnail( $sponsor_id ) ) {
+			continue;
+		}
+
+		$logo_id = (int) get_post_thumbnail_id( $sponsor_id );
+		if ( $logo_id <= 0 ) {
+			continue;
+		}
+
+		$sponsors[] = array(
+			'id'      => $sponsor_id,
+			'name'    => sanitize_text_field( (string) get_the_title( $sponsor_id ) ),
+			'url'     => esc_url_raw( (string) get_post_meta( $sponsor_id, '_liga_sponsor_url', true ) ),
+			'logo_id' => $logo_id,
+		);
+	}
+
+	wp_reset_postdata();
+
+	return $sponsors;
+}
+
+/**
+ * Renderiza el logo de sponsor usando imagen destacada.
+ *
+ * @param int    $sponsor_id ID del sponsor.
+ * @param string $size Tamano de imagen WP.
+ * @return string
+ */
+function liga_render_sponsor_logo( $sponsor_id, $size = 'medium' ) {
+	$sponsor_id = absint( $sponsor_id );
+	if ( $sponsor_id <= 0 || ! has_post_thumbnail( $sponsor_id ) ) {
+		return '';
+	}
+
+	$logo_id = (int) get_post_thumbnail_id( $sponsor_id );
+	if ( $logo_id <= 0 ) {
+		return '';
+	}
+
+	return (string) wp_get_attachment_image(
+		$logo_id,
+		$size,
+		false,
+		array(
+			'class'    => 'liga-sponsors-logo',
+			'loading'  => 'lazy',
+			'decoding' => 'async',
+			'alt'      => sprintf( 'Logo %s', get_the_title( $sponsor_id ) ),
+		)
 	);
 }

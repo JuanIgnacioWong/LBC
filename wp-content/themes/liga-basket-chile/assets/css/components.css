@@ -331,9 +331,9 @@
   margin-bottom: 0.9rem;
 }
 
-.liga-tab-button {
+.liga-body .liga-tab-button {
   border: 1px solid rgba(248, 250, 252, 0.2);
-  color: rgba(248, 250, 252, 0.9);
+  color: var(--liga-primary);
   background-color: rgba(248, 250, 252, 0.02);
   border-radius: 999px;
   padding: 0.42rem 0.8rem;
@@ -341,7 +341,13 @@
   cursor: pointer;
 }
 
-.liga-tab-button.is-active {
+.liga-body .liga-tab-button:hover {
+  color: var(--liga-primary-strong);
+}
+
+.liga-body .liga-tab-button.is-active,
+.liga-body .liga-tab-button[aria-selected="true"] {
+  color: #fff;
   border-color: rgba(255, 159, 28, 0.6);
   background-color: rgba(255, 159, 28, 0.18);
 }

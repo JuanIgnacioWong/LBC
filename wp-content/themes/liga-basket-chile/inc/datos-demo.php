@@ -38,6 +38,175 @@ function liga_upsert_demo_post( $post_type, $slug, $title, $content = '' ) {
 }
 
 /**
+ * Configuracion demo de sponsors NBA.
+ *
+ * @return array<int, array<string, string>>
+ */
+function liga_get_nba_sponsors_demo_config() {
+	return array(
+		array(
+			'slug'     => 'nba-boston-celtics',
+			'name'     => 'Boston Celtics',
+			'url'      => 'https://www.nba.com/celtics',
+			'logo_url' => 'https://loodibee.com/wp-content/uploads/nba-boston-celtics-logo.png',
+		),
+		array(
+			'slug'     => 'nba-los-angeles-lakers',
+			'name'     => 'Los Angeles Lakers',
+			'url'      => 'https://www.nba.com/lakers',
+			'logo_url' => 'https://loodibee.com/wp-content/uploads/nba-los-angeles-lakers-logo.png',
+		),
+		array(
+			'slug'     => 'nba-golden-state-warriors',
+			'name'     => 'Golden State Warriors',
+			'url'      => 'https://www.nba.com/warriors',
+			'logo_url' => 'https://loodibee.com/wp-content/uploads/nba-golden-state-warriors-logo.png',
+		),
+		array(
+			'slug'     => 'nba-chicago-bulls',
+			'name'     => 'Chicago Bulls',
+			'url'      => 'https://www.nba.com/bulls',
+			'logo_url' => 'https://loodibee.com/wp-content/uploads/nba-chicago-bulls-logo.png',
+		),
+		array(
+			'slug'     => 'nba-miami-heat',
+			'name'     => 'Miami Heat',
+			'url'      => 'https://www.nba.com/heat',
+			'logo_url' => 'https://loodibee.com/wp-content/uploads/nba-miami-heat-logo.png',
+		),
+	);
+}
+
+/**
+ * Descarga una imagen remota al Media Library y retorna ID de adjunto.
+ *
+ * @param string $image_url URL de imagen.
+ * @param int    $post_id Post asociado.
+ * @param string $description Descripcion opcional.
+ * @return int
+ */
+function liga_import_demo_remote_image( $image_url, $post_id = 0, $description = '' ) {
+	$image_url = esc_url_raw( (string) $image_url );
+	if ( '' === $image_url ) {
+		return 0;
+	}
+
+	$existing = get_posts(
+		array(
+			'post_type'      => 'attachment',
+			'post_status'    => 'inherit',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'meta_key'       => '_liga_demo_source_url',
+			'meta_value'     => $image_url,
+		)
+	);
+	if ( ! empty( $existing ) ) {
+		return (int) $existing[0];
+	}
+
+	if ( ! function_exists( 'download_url' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+	}
+	if ( ! function_exists( 'media_handle_sideload' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+	}
+	if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+	}
+
+	$tmp_file = download_url( $image_url, 20 );
+	if ( is_wp_error( $tmp_file ) ) {
+		return 0;
+	}
+
+	$url_path  = (string) wp_parse_url( $image_url, PHP_URL_PATH );
+	$file_name = sanitize_file_name( wp_basename( $url_path ) );
+	if ( '' === $file_name ) {
+		$file_name = 'sponsor-logo.png';
+	}
+
+	$file = array(
+		'name'     => $file_name,
+		'tmp_name' => $tmp_file,
+	);
+
+	$attachment_id = (int) media_handle_sideload( $file, (int) $post_id, $description );
+	if ( $attachment_id <= 0 || is_wp_error( $attachment_id ) ) {
+		if ( file_exists( $tmp_file ) ) {
+			wp_delete_file( $tmp_file );
+		}
+		return 0;
+	}
+
+	update_post_meta( $attachment_id, '_liga_demo_source_url', $image_url );
+	return $attachment_id;
+}
+
+/**
+ * Inserta sponsors NBA demo para el home con logos reales.
+ *
+ * @param bool $force Fuerza recreacion.
+ * @return array<string, mixed>
+ */
+function liga_seed_nba_sponsor_demo_data( $force = false ) {
+	if ( ! post_type_exists( 'liga_sponsor' ) ) {
+		return array(
+			'status'  => 'skipped',
+			'message' => __( 'No existe el CPT liga_sponsor.', 'liga-basket-chile' ),
+		);
+	}
+
+	$already_seeded = (int) get_option( 'liga_nba_sponsors_demo_seeded', 0 );
+	if ( $already_seeded > 0 && ! $force ) {
+		return array(
+			'status'  => 'skipped',
+			'message' => __( 'Los sponsors NBA demo ya fueron cargados.', 'liga-basket-chile' ),
+		);
+	}
+
+	$sponsors = liga_get_nba_sponsors_demo_config();
+	foreach ( $sponsors as $index => $sponsor ) {
+		$sponsor_id = liga_upsert_demo_post( 'liga_sponsor', (string) $sponsor['slug'], (string) $sponsor['name'] );
+		if ( $sponsor_id <= 0 ) {
+			continue;
+		}
+
+		update_post_meta( $sponsor_id, '_liga_sponsor_url', esc_url_raw( (string) $sponsor['url'] ) );
+		update_post_meta( $sponsor_id, '_liga_sponsor_active', 1 );
+
+		wp_update_post(
+			array(
+				'ID'         => $sponsor_id,
+				'menu_order' => $index + 1,
+			)
+		);
+
+		$has_thumb = has_post_thumbnail( $sponsor_id );
+		if ( ! $force && $has_thumb ) {
+			continue;
+		}
+
+		$logo_id = liga_import_demo_remote_image(
+			(string) $sponsor['logo_url'],
+			$sponsor_id,
+			(string) $sponsor['name']
+		);
+
+		if ( $logo_id > 0 ) {
+			set_post_thumbnail( $sponsor_id, $logo_id );
+		}
+	}
+
+	update_option( 'liga_nba_sponsors_demo_seeded', 1 );
+
+	return array(
+		'status'  => 'ok',
+		'message' => __( 'Sponsors NBA demo cargados correctamente.', 'liga-basket-chile' ),
+	);
+}
+
+/**
  * Inserta dataset demo de liga.
  *
  * @param bool $force Fuerza recreacion.
@@ -152,9 +321,11 @@ function liga_seed_demo_data( $force = false ) {
 		array( 'slug' => 'final-four-u17', 'title' => 'Definido el formato Final Four para U17', 'content' => 'La division juvenil cerrara el torneo con formato concentrado.' ),
 	);
 
-	foreach ( $news_config as $news ) {
-		liga_upsert_demo_post( 'post', $news['slug'], $news['title'], $news['content'] );
-	}
+		foreach ( $news_config as $news ) {
+			liga_upsert_demo_post( 'post', $news['slug'], $news['title'], $news['content'] );
+		}
+
+		liga_seed_nba_sponsor_demo_data( $force );
 
 	update_option(
 		'liga_sponsors_demo',
@@ -821,3 +992,38 @@ function liga_handle_demo_seed_request() {
 	exit;
 }
 add_action( 'admin_init', 'liga_handle_demo_seed_request' );
+
+/**
+ * Procesa accion manual para carga de sponsors NBA demo.
+ *
+ * @return void
+ */
+function liga_handle_sponsor_demo_seed_request() {
+	if ( ! is_admin() ) {
+		return;
+	}
+
+	if ( ! isset( $_GET['liga_sponsor_demo_seed'] ) ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+	if ( ! wp_verify_nonce( $nonce, 'liga_sponsor_demo_seed' ) ) {
+		liga_add_admin_alert( 'error', __( 'Nonce invalido al cargar sponsors NBA demo.', 'liga-basket-chile' ) );
+		return;
+	}
+
+	$force  = isset( $_GET['force'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['force'] ) );
+	$result = liga_seed_nba_sponsor_demo_data( $force );
+	$type   = 'ok' === $result['status'] ? 'success' : 'warning';
+
+	liga_add_admin_alert( $type, $result['message'] );
+
+	wp_safe_redirect( remove_query_arg( array( 'liga_sponsor_demo_seed', '_wpnonce', 'force' ) ) );
+	exit;
+}
+add_action( 'admin_init', 'liga_handle_sponsor_demo_seed_request' );

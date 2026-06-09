@@ -277,6 +277,70 @@ function liga_nav_menu_link_attributes( $atts, $item, $args ) {
 add_filter( 'nav_menu_link_attributes', 'liga_nav_menu_link_attributes', 10, 3 );
 
 /**
+ * Detecta si la solicitud actual apunta al listado publico de noticias.
+ *
+ * @return bool
+ */
+function liga_is_news_archive_request() {
+	if ( is_admin() ) {
+		return false;
+	}
+
+	$request_path = trim( (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ), '/' );
+
+	return 1 === preg_match( '#^noticias(?:/page/[0-9]+)?/?$#', $request_path );
+}
+
+/**
+ * Fuerza template de noticias para la ruta publica /noticias.
+ *
+ * @param string $template Template resuelto por WordPress.
+ * @return string
+ */
+function liga_force_news_archive_template( $template ) {
+	if ( ! liga_is_news_archive_request() ) {
+		return $template;
+	}
+
+	$news_template = locate_template( array( 'home.php', 'archive-noticia.php', 'index.php' ) );
+
+	return '' !== $news_template ? $news_template : $template;
+}
+add_filter( 'template_include', 'liga_force_news_archive_template', 50 );
+
+/**
+ * Fuerza template single de partido para evitar overrides de terceros.
+ *
+ * @param string $template Template resuelto por WordPress.
+ * @return string
+ */
+function liga_force_partido_single_template( $template ) {
+	if ( ! is_singular( 'partido' ) ) {
+		return $template;
+	}
+
+	$single_partido_template = locate_template( array( 'single-partido.php' ) );
+	return '' !== $single_partido_template ? $single_partido_template : $template;
+}
+add_filter( 'template_include', 'liga_force_partido_single_template', 99 );
+
+/**
+ * Evita que WordPress marque /noticias como 404 cuando se forza template.
+ *
+ * @param bool     $preempt  Valor previo para cortar manejo de 404.
+ * @param WP_Query $wp_query Query principal actual.
+ * @return bool
+ */
+function liga_prevent_news_archive_404( $preempt, $wp_query ) {
+	if ( liga_is_news_archive_request() ) {
+		return true;
+	}
+
+	return $preempt;
+}
+add_filter( 'pre_handle_404', 'liga_prevent_news_archive_404', 10, 2 );
+
+/**
  * Add theme-specific classes to nav menu list items.
  *
  * @param array    $classes Current classes.
@@ -330,6 +394,7 @@ function liga_bootstrap_inc_modules() {
 			'inc/tabla-logica.php',
 			'inc/public-standings.php',
 			'inc/opciones-tema.php',
+			'inc/admin-footer-options.php',
 			'inc/admin-tabla.php',
 			'inc/import-equipos.php',
 			'inc/import-partidos.php',

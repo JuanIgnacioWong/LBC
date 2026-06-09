@@ -22,7 +22,7 @@ $news_query = new WP_Query(
 	<div class="liga-container">
 		<div class="liga-section-head">
 			<h2 class="liga-section-title" id="liga-news-title"><?php esc_html_e( 'Ultimas noticias', 'liga-basket-chile' ); ?></h2>
-			<a class="liga-section-link" href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ?: home_url( '/noticias' ) ); ?>"><?php esc_html_e( 'Ver noticias', 'liga-basket-chile' ); ?></a>
+			<a class="liga-section-link" href="<?php echo esc_url( home_url( '/noticias/' ) ); ?>"><?php esc_html_e( 'Ver noticias', 'liga-basket-chile' ); ?></a>
 		</div>
 
 		<div class="liga-grid liga-news-grid">

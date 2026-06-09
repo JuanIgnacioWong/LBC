@@ -40,12 +40,35 @@ function liga_get_theme_option_fields() {
 		'header_login_enabled' => 'checkbox',
 		'header_login_label' => 'text',
 		'header_login_url'   => 'url',
-		'standings_points_win' => 'int',
-		'standings_points_loss' => 'int',
-		'standings_points_walkover_win' => 'int',
-		'standings_points_walkover_loss' => 'int',
-	);
-}
+			'standings_points_win' => 'int',
+			'standings_points_loss' => 'int',
+			'standings_points_walkover_win' => 'int',
+			'standings_points_walkover_loss' => 'int',
+			'footer_brand_title'   => 'text',
+			'footer_brand_description' => 'textarea',
+			'footer_logo_id'       => 'int',
+			'footer_show_logo'     => 'checkbox',
+			'footer_show_brand_title' => 'checkbox',
+			'footer_show_brand_description' => 'checkbox',
+			'footer_social_instagram' => 'url',
+			'footer_social_x'      => 'url',
+			'footer_social_youtube' => 'url',
+			'footer_social_tiktok' => 'url',
+			'footer_show_social'   => 'checkbox',
+			'footer_contact_address_1' => 'text',
+			'footer_contact_address_2' => 'text',
+			'footer_contact_email' => 'email',
+			'footer_contact_phone' => 'text',
+			'footer_show_contact'  => 'checkbox',
+			'footer_copyright_text' => 'text',
+			'footer_legal_extra_text' => 'textarea',
+			'footer_show_legal_strip' => 'checkbox',
+			'footer_show_brand_block' => 'checkbox',
+			'footer_show_footer_menu' => 'checkbox',
+			'footer_show_secondary_menu' => 'checkbox',
+			'footer_show_contact_block' => 'checkbox',
+		);
+	}
 
 /**
  * Sanitiza opciones del tema.
@@ -232,17 +255,38 @@ function liga_render_theme_options_page() {
 			),
 			'liga_topbar_seed'
 		);
-		$main_menu_seed_url = wp_nonce_url(
-			add_query_arg(
+			$main_menu_seed_url = wp_nonce_url(
+				add_query_arg(
 				array(
 					'page'                => isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : 'liga-theme-options',
 					'liga_main_menu_seed' => 1,
 				),
 				admin_url( 'admin.php' )
-			),
-			'liga_main_menu_seed'
-		);
-		?>
+				),
+				'liga_main_menu_seed'
+			);
+			$sponsor_demo_seed_url = wp_nonce_url(
+				add_query_arg(
+					array(
+						'page'                  => isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : 'liga-theme-options',
+						'liga_sponsor_demo_seed' => 1,
+					),
+					admin_url( 'admin.php' )
+				),
+				'liga_sponsor_demo_seed'
+			);
+			$sponsor_demo_force_url = wp_nonce_url(
+				add_query_arg(
+					array(
+						'page'                  => isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : 'liga-theme-options',
+						'liga_sponsor_demo_seed' => 1,
+						'force'                 => 1,
+					),
+					admin_url( 'admin.php' )
+				),
+				'liga_sponsor_demo_seed'
+			);
+			?>
 		<hr>
 		<h2><?php esc_html_e( 'Datos Demo', 'liga-basket-chile' ); ?></h2>
 		<p><?php esc_html_e( 'Carga 6 equipos, 2 divisiones, 12 partidos, 6 noticias y sponsors demo.', 'liga-basket-chile' ); ?></p>
@@ -250,9 +294,15 @@ function liga_render_theme_options_page() {
 		<h2><?php esc_html_e( 'Menú Principal Demo', 'liga-basket-chile' ); ?></h2>
 		<p><?php esc_html_e( 'Crea/asigna el Menú Principal y agrega enlaces referenciales si aún no existen.', 'liga-basket-chile' ); ?></p>
 		<p><a class="button button-secondary" href="<?php echo esc_url( $main_menu_seed_url ); ?>"><?php esc_html_e( 'Poblar Menú Principal', 'liga-basket-chile' ); ?></a></p>
-		<h2><?php esc_html_e( 'Topbar Demo', 'liga-basket-chile' ); ?></h2>
-		<p><?php esc_html_e( 'Crea/asigna el Menú Topbar y agrega contenido referencial e iconos si aun no existen.', 'liga-basket-chile' ); ?></p>
-		<p><a class="button button-secondary" href="<?php echo esc_url( $topbar_seed_url ); ?>"><?php esc_html_e( 'Poblar Menú Topbar', 'liga-basket-chile' ); ?></a></p>
-	</div>
-	<?php
+			<h2><?php esc_html_e( 'Topbar Demo', 'liga-basket-chile' ); ?></h2>
+			<p><?php esc_html_e( 'Crea/asigna el Menú Topbar y agrega contenido referencial e iconos si aun no existen.', 'liga-basket-chile' ); ?></p>
+			<p><a class="button button-secondary" href="<?php echo esc_url( $topbar_seed_url ); ?>"><?php esc_html_e( 'Poblar Menú Topbar', 'liga-basket-chile' ); ?></a></p>
+			<h2><?php esc_html_e( 'Sponsors NBA Demo', 'liga-basket-chile' ); ?></h2>
+			<p><?php esc_html_e( 'Crea sponsors demo con logos de equipos NBA para la sección patrocinadores del home.', 'liga-basket-chile' ); ?></p>
+			<p>
+				<a class="button button-secondary" href="<?php echo esc_url( $sponsor_demo_seed_url ); ?>"><?php esc_html_e( 'Cargar sponsors NBA demo', 'liga-basket-chile' ); ?></a>
+				<a class="button button-link" href="<?php echo esc_url( $sponsor_demo_force_url ); ?>"><?php esc_html_e( 'Recargar logos (force)', 'liga-basket-chile' ); ?></a>
+			</p>
+		</div>
+		<?php
 }

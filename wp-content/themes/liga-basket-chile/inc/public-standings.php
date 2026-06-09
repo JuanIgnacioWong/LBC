@@ -270,6 +270,62 @@ function liga_handle_public_standings_not_found() {
 add_action( 'template_redirect', 'liga_handle_public_standings_not_found', 9 );
 
 /**
+ * Redirige rutas base de tabla hacia una URL publica valida.
+ *
+ * Compatibilidad:
+ * - /tabla/
+ * - /posiciones/
+ *
+ * @return void
+ */
+function liga_redirect_public_standings_base_routes() {
+	if ( is_admin() || wp_doing_ajax() ) {
+		return;
+	}
+
+	$request_path = trim( (string) wp_parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '' ), PHP_URL_PATH ), '/' );
+	if ( ! in_array( $request_path, array( 'tabla', 'posiciones' ), true ) ) {
+		return;
+	}
+
+	$default_url = liga_get_default_public_standings_url( liga_get_current_season_label() );
+	if ( '' === $default_url ) {
+		$default_url = liga_get_default_public_standings_url( gmdate( 'Y' ) );
+	}
+	if ( '' === $default_url ) {
+		$fallback_divisions = get_posts(
+			array(
+				'post_type'      => 'division',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+			)
+		);
+		if ( ! empty( $fallback_divisions ) ) {
+			$fallback_division_id = (int) $fallback_divisions[0]->ID;
+			$fallback_season      = liga_get_division_temporada_label( $fallback_division_id );
+			if ( ! liga_is_valid_temporada_label( $fallback_season ) ) {
+				$fallback_season = gmdate( 'Y' );
+			}
+			$default_url = liga_get_standings_public_url( $fallback_division_id, $fallback_season );
+		}
+	}
+	if ( '' === $default_url ) {
+		return;
+	}
+
+	$current_url = home_url( user_trailingslashit( $request_path ) );
+	if ( untrailingslashit( $default_url ) === untrailingslashit( $current_url ) ) {
+		return;
+	}
+
+	wp_safe_redirect( $default_url, 302 );
+	exit;
+}
+add_action( 'template_redirect', 'liga_redirect_public_standings_base_routes', 6 );
+
+/**
  * Routes standings context to the public template.
  *
  * @param string $template Current template.
@@ -787,6 +843,95 @@ function liga_get_related_season_links_for_division( $division_id, $exclude_temp
 	}
 
 	return $links;
+}
+
+/**
+ * Returns related news rows for standings context.
+ *
+ * Attempts filtered lookup first and falls back to latest published posts.
+ *
+ * @param int    $division_id Division ID.
+ * @param string $temporada Season label.
+ * @param int    $max Maximum rows.
+ * @return array<int, array<string, string>>
+ */
+function liga_get_related_news_for_standings_context( $division_id, $temporada, $max = 4 ) {
+	$division_id = absint( $division_id );
+	$temporada   = trim( sanitize_text_field( (string) $temporada ) );
+	$max         = max( 1, min( 12, absint( $max ) ) );
+
+	if ( ! liga_is_valid_post_type_id( $division_id, 'division' ) || ! liga_is_valid_temporada_label( $temporada ) ) {
+		return array();
+	}
+
+	$division_post = get_post( $division_id );
+	if ( ! $division_post instanceof WP_Post ) {
+		return array();
+	}
+
+	$division_slug  = sanitize_title( (string) $division_post->post_name );
+	$division_label = liga_get_division_public_label( $division_id );
+	$term_slugs     = array_filter(
+		array_unique(
+			array(
+				$division_slug,
+				sanitize_title( $division_label ),
+				sanitize_title( $temporada ),
+			)
+		)
+	);
+
+	$query_args = array(
+		'post_type'           => 'post',
+		'post_status'         => 'publish',
+		'posts_per_page'      => $max,
+		'no_found_rows'       => true,
+		'ignore_sticky_posts' => true,
+		'orderby'             => 'date',
+		'order'               => 'DESC',
+	);
+
+	if ( ! empty( $term_slugs ) ) {
+		$query_args['tax_query'] = array(
+			array(
+				'taxonomy'         => 'categoria_noticia_liga',
+				'field'            => 'slug',
+				'terms'            => $term_slugs,
+				'include_children' => false,
+				'operator'         => 'IN',
+			),
+		);
+	}
+
+	$news_query = new WP_Query( $query_args );
+
+	if ( ! $news_query->have_posts() ) {
+		$news_query = new WP_Query(
+			array(
+				'post_type'           => 'post',
+				'post_status'         => 'publish',
+				'posts_per_page'      => $max,
+				'no_found_rows'       => true,
+				'ignore_sticky_posts' => true,
+				'orderby'             => 'date',
+				'order'               => 'DESC',
+			)
+		);
+	}
+
+	$rows = array();
+	while ( $news_query->have_posts() ) {
+		$news_query->the_post();
+		$rows[] = array(
+			'title'     => get_the_title(),
+			'url'       => get_permalink(),
+			'date_iso'  => get_the_date( 'c' ),
+			'date_label'=> get_the_date( 'd M Y' ),
+		);
+	}
+	wp_reset_postdata();
+
+	return $rows;
 }
 
 /**

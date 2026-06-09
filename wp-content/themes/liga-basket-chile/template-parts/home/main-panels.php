@@ -151,9 +151,20 @@ $divisions = array();
 
 foreach ( $division_posts as $division_post ) {
 	$division_id    = (int) $division_post->ID;
-	$table_data     = liga_calcular_tabla_posiciones( $division_id, $season );
+	$table_data     = function_exists( 'liga_get_standings_by_division_and_season' )
+		? liga_get_standings_by_division_and_season( $division_id, $season )
+		: liga_calcular_tabla_posiciones( $division_id, $season );
 	$division_label = trim( (string) get_post_meta( $division_id, 'liga_nombre_division', true ) );
 	$rows           = array();
+
+	if ( ( ! isset( $table_data['tabla'] ) || ! is_array( $table_data['tabla'] ) || empty( $table_data['tabla'] ) ) && function_exists( 'liga_get_standings_by_division_and_season' ) ) {
+		$division_season = function_exists( 'liga_get_division_temporada_label' ) ? liga_get_division_temporada_label( $division_id ) : '';
+		if ( ! liga_is_valid_temporada_label( $division_season ) ) {
+			$division_season = gmdate( 'Y' );
+		}
+
+		$table_data = liga_get_standings_by_division_and_season( $division_id, $division_season );
+	}
 
 	if ( isset( $table_data['tabla'] ) && is_array( $table_data['tabla'] ) ) {
 		$rows = array_slice( $table_data['tabla'], 0, 6 );
@@ -271,7 +282,7 @@ foreach ( $fixtures_posts as $fixture_post ) {
 
 $matches_archive = get_post_type_archive_link( 'partido' );
 if ( ! $matches_archive ) {
-	$matches_archive = home_url( '/partido' );
+	$matches_archive = home_url( '/partidos' );
 }
 
 $results_link = add_query_arg( 'estado', 'finalizado', $matches_archive );

@@ -24,7 +24,7 @@ get_header();
 				$published_label   = get_the_date( 'd M Y' );
 				$published_iso     = get_the_date( 'c' );
 				$matches_archive   = get_post_type_archive_link( 'partido' );
-				$matches_archive   = $matches_archive ? $matches_archive : home_url( '/partido' );
+				$matches_archive   = $matches_archive ? $matches_archive : home_url( '/partidos' );
 				$fixture_link      = add_query_arg( 'estado', 'programado', $matches_archive );
 				$latest_news_query = new WP_Query(
 					array(

@@ -43,6 +43,26 @@
   transform: translateY(0);
 }
 
+/* Fallback defensivo Home: mostrar tabla si hidden queda mal aplicado */
+.liga-home .liga-home-main-panels,
+.liga-home .liga-home-main-panels-grid,
+.liga-home .liga-standings-panel,
+.liga-home .liga-standings-panel.is-reveal-pending,
+.liga-home .liga-standings-panel.is-visible,
+.liga-home .liga-standings-panel.is-revealed {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+.liga-home .liga-table-wrap.is-visible,
+.liga-home .liga-table-wrap.is-revealed,
+.liga-home .liga-table-wrap[hidden].is-visible,
+.liga-home .liga-table-wrap[hidden].is-revealed,
+.liga-home .liga-standings-panel .liga-table-wrap:first-of-type[hidden] {
+  display: block !important;
+}
+
 /* Sticky state hook handled by JS */
 .liga-header.liga-header--scrolled {
   box-shadow: 0 16px 34px rgba(2, 8, 20, 0.45);

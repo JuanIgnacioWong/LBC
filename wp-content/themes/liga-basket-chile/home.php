@@ -1,6 +1,6 @@
 <?php
 /**
- * Archivo de noticias.
+ * Archivo de publicaciones nativas.
  *
  * @package LigaBasketChile
  */

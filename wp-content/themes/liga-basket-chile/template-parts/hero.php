@@ -8,7 +8,7 @@
 $hero_title    = liga_get_option( 'hero_title', 'SE VIVE EL BASQUET SE VIVE CONCEPCION' );
 $hero_subtitle = liga_get_option( 'hero_subtitle', 'La competencia mas intensa del sur de Chile. Talento, esfuerzo y pasion en cada jornada.' );
 $cta_primary   = liga_get_option( 'header_cta_label', 'Ver Partidos' );
-$cta_primary_u = home_url( '/partido' );
+$cta_primary_u = home_url( '/partidos' );
 $cta_secondary = __( 'Conoce la Liga', 'liga-basket-chile' );
 $cta_second_u  = home_url( '/la-liga' );
 $hero_image    = liga_get_option( 'hero_image_url', '' );

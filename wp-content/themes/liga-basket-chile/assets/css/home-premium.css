@@ -149,11 +149,13 @@ body.liga-body {
   letter-spacing: 0.06em;
   font-size: 0.88rem;
   font-weight: 700;
-  color: var(--liga-secondary);
+  color: var(--liga-secondary-hover);
+  transition: color 0.2s ease;
 }
 
-.liga-section-link:hover {
-  color: var(--liga-secondary-hover);
+.liga-section-link:hover,
+.liga-section-link:focus-visible {
+  color: var(--liga-primary);
 }
 
 .liga-btn,
@@ -250,38 +252,60 @@ body.liga-body {
   color: #8a4e00;
 }
 
-.liga-tab,
-.liga-division-tab {
+.liga-body .liga-tab,
+.liga-body .liga-division-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 2rem;
   padding: 0.3rem 0.7rem;
   border-radius: var(--liga-radius-pill);
-  border: 1px solid rgba(11, 42, 102, 0.14);
-  background: #f8fafc;
-  color: #334155;
+  border: 1px solid color-mix(in srgb, var(--liga-primary) 42%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--liga-primary) 12%, transparent) 0%,
+      color-mix(in srgb, var(--liga-primary-strong) 18%, transparent) 100%
+    );
+  color: var(--liga-primary);
   font-family: var(--liga-font-heading);
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--liga-text) 12%, transparent),
+    0 4px 10px color-mix(in srgb, var(--liga-primary-strong) 24%, transparent);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.liga-tab:hover,
-.liga-division-tab:hover {
-  border-color: rgba(11, 42, 102, 0.28);
-  color: var(--liga-primary);
+.liga-body .liga-tab:hover,
+.liga-body .liga-division-tab:hover {
+  border-color: color-mix(in srgb, var(--liga-primary) 65%, var(--liga-secondary) 35%);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--liga-primary) 24%, transparent) 0%,
+      color-mix(in srgb, var(--liga-primary-strong) 32%, transparent) 100%
+    );
+  color: var(--liga-primary-strong);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--liga-text) 18%, transparent),
+    0 10px 20px color-mix(in srgb, var(--liga-primary-strong) 34%, transparent);
+  transform: translateY(-1px);
 }
 
-.liga-tab--active,
-.liga-tab-active,
-.liga-division-tab[aria-selected="true"] {
-  color: var(--liga-text);
+.liga-body .liga-tab--active,
+.liga-body .liga-tab-active,
+.liga-body .liga-division-tab[aria-selected="true"] {
+  color: #fff;
   border-color: var(--liga-primary);
   background: linear-gradient(135deg, var(--liga-primary) 0%, var(--liga-primary-strong) 100%);
-  box-shadow: 0 8px 18px rgba(11, 42, 102, 0.28);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--liga-text) 24%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--liga-primary-strong) 46%, transparent),
+    0 12px 24px color-mix(in srgb, var(--liga-primary-strong) 42%, transparent);
 }
 
 /* 5. Topbar */
@@ -1047,7 +1071,7 @@ body.liga-body {
 .liga-sponsors {
   border-top: 1px solid rgba(11, 42, 102, 0.1);
   border-bottom: 1px solid rgba(11, 42, 102, 0.1);
-  color: var(--liga-text-dark);
+  color: var(--liga-primary);
   background: linear-gradient(180deg, #f2f5fa 0%, #ffffff 100%);
 }
 

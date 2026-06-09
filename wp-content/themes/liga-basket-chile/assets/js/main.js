@@ -39,6 +39,7 @@
     initTabs();
     initStickyHeader();
     initHeroSliders();
+    initSponsorsCarousel();
     initRevealOnScroll();
   });
 
@@ -251,6 +252,7 @@
         ) || tabs[0];
 
       activateTab(initialTab, false);
+      ensureAtLeastOneVisiblePanel();
 
       tabs.forEach((tab) => {
         tab.addEventListener("click", () => activateTab(tab, true));
@@ -298,6 +300,33 @@
         if (shouldFocus) {
           activeTab.focus();
         }
+      }
+
+      function ensureAtLeastOneVisiblePanel() {
+        const panels = tabs
+          .map((tab) => panelsByTab.get(tab))
+          .filter((panel) => panel instanceof HTMLElement);
+
+        if (panels.length === 0) {
+          return;
+        }
+
+        const hasVisiblePanel = panels.some((panel) => !panel.hidden);
+        if (hasVisiblePanel) {
+          return;
+        }
+
+        const fallbackTab = tabs[0];
+        const fallbackPanel = panelsByTab.get(fallbackTab);
+        if (!fallbackTab || !fallbackPanel) {
+          return;
+        }
+
+        fallbackTab.classList.add("liga-tab--active", "liga-tab-active");
+        fallbackTab.setAttribute("aria-selected", "true");
+        fallbackTab.setAttribute("tabindex", "0");
+        fallbackPanel.hidden = false;
+        fallbackPanel.classList.add("is-visible", "is-revealed");
       }
     });
 
@@ -563,6 +592,190 @@
         startAutoplay();
       });
 
+      startAutoplay();
+    });
+  }
+
+  /**
+   * Sponsors carousel:
+   * - Native horizontal scroll with prev/next controls
+   * - Lightweight autoplay loop
+   * - Pause on hover/focus and resume on leave
+   */
+  function initSponsorsCarousel() {
+    const carousels = qsa("[data-liga-sponsors-carousel]");
+    if (carousels.length === 0) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    carousels.forEach((carousel) => {
+      const track = qs("[data-liga-sponsors-track]", carousel);
+      const previousButton = qs(".liga-sponsors-nav--prev", carousel);
+      const nextButton = qs(".liga-sponsors-nav--next", carousel);
+
+      if (!track || !previousButton || !nextButton) {
+        return;
+      }
+
+      let autoplayTimer = null;
+      let resizeTimer = null;
+      let interactionPaused = false;
+
+      const isOverflowing = () => track.scrollWidth - track.clientWidth > 2;
+      const isAtStart = () => track.scrollLeft <= 2;
+      const isAtEnd = () =>
+        track.scrollLeft >= track.scrollWidth - track.clientWidth - 2;
+
+      const getStep = () => {
+        const firstItem = qs(".liga-sponsors-item", track);
+        if (!firstItem) {
+          return track.clientWidth;
+        }
+
+        const styles = window.getComputedStyle(track);
+        const gapRaw = styles.columnGap || styles.gap || "0";
+        const gap = Number.parseFloat(gapRaw);
+        return firstItem.getBoundingClientRect().width + (Number.isNaN(gap) ? 0 : gap);
+      };
+
+      const stopAutoplay = () => {
+        if (!autoplayTimer) {
+          return;
+        }
+        window.clearInterval(autoplayTimer);
+        autoplayTimer = null;
+      };
+
+      const goNext = (smooth = true) => {
+        if (!isOverflowing()) {
+          return;
+        }
+
+        if (isAtEnd()) {
+          track.scrollTo({ left: 0, behavior: smooth ? "smooth" : "auto" });
+          return;
+        }
+
+        track.scrollBy({ left: getStep(), behavior: smooth ? "smooth" : "auto" });
+      };
+
+      const goPrevious = (smooth = true) => {
+        if (!isOverflowing()) {
+          return;
+        }
+
+        if (isAtStart()) {
+          track.scrollTo({
+            left: track.scrollWidth,
+            behavior: smooth ? "smooth" : "auto",
+          });
+          return;
+        }
+
+        track.scrollBy({
+          left: getStep() * -1,
+          behavior: smooth ? "smooth" : "auto",
+        });
+      };
+
+      const startAutoplay = () => {
+        if (prefersReducedMotion || interactionPaused || !isOverflowing()) {
+          return;
+        }
+
+        stopAutoplay();
+        autoplayTimer = window.setInterval(() => {
+          if (document.hidden || interactionPaused) {
+            return;
+          }
+          goNext(true);
+        }, 4200);
+      };
+
+      const syncCarouselState = () => {
+        const canScroll = isOverflowing();
+        carousel.setAttribute("data-can-scroll", canScroll ? "true" : "false");
+        previousButton.disabled = !canScroll;
+        nextButton.disabled = !canScroll;
+
+        if (!canScroll) {
+          stopAutoplay();
+          return;
+        }
+
+        if (!interactionPaused) {
+          startAutoplay();
+        }
+      };
+
+      previousButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        stopAutoplay();
+        goPrevious(true);
+        if (!carousel.contains(document.activeElement)) {
+          interactionPaused = false;
+          startAutoplay();
+        }
+      });
+
+      nextButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        stopAutoplay();
+        goNext(true);
+        if (!carousel.contains(document.activeElement)) {
+          interactionPaused = false;
+          startAutoplay();
+        }
+      });
+
+      const pauseFromInteraction = () => {
+        interactionPaused = true;
+        stopAutoplay();
+      };
+
+      const resumeFromInteraction = () => {
+        interactionPaused = false;
+        startAutoplay();
+      };
+
+      carousel.addEventListener("mouseenter", pauseFromInteraction);
+      carousel.addEventListener("mouseleave", resumeFromInteraction);
+      carousel.addEventListener("focusin", pauseFromInteraction);
+      carousel.addEventListener("focusout", () => {
+        window.setTimeout(() => {
+          if (!carousel.contains(document.activeElement)) {
+            resumeFromInteraction();
+          }
+        }, 0);
+      });
+
+      track.addEventListener("touchstart", pauseFromInteraction, { passive: true });
+      track.addEventListener("touchend", resumeFromInteraction, { passive: true });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          stopAutoplay();
+          return;
+        }
+        if (!interactionPaused) {
+          startAutoplay();
+        }
+      });
+
+      window.addEventListener(
+        "resize",
+        () => {
+          window.clearTimeout(resizeTimer);
+          resizeTimer = window.setTimeout(syncCarouselState, 140);
+        },
+        { passive: true }
+      );
+
+      syncCarouselState();
       startAutoplay();
     });
   }

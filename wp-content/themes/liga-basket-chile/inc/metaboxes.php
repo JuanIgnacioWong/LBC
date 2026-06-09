@@ -50,6 +50,15 @@ function liga_register_metaboxes() {
 		'normal',
 		'high'
 	);
+
+	add_meta_box(
+		'liga_sponsor_detalles',
+		__( 'Datos del Sponsor', 'liga-basket-chile' ),
+		'liga_render_sponsor_metabox',
+		'liga_sponsor',
+		'normal',
+		'high'
+	);
 }
 add_action( 'add_meta_boxes', 'liga_register_metaboxes' );
 
@@ -114,6 +123,11 @@ function liga_register_post_meta_fields() {
 		'liga_banner_autoplay'            => 'integer',
 	);
 
+	$sponsor_meta = array(
+		'_liga_sponsor_url'    => 'string',
+		'_liga_sponsor_active' => 'integer',
+	);
+
 	foreach ( $equipo_meta as $key => $type ) {
 		register_post_meta(
 			'equipo',
@@ -162,6 +176,21 @@ function liga_register_post_meta_fields() {
 	foreach ( $banner_meta as $key => $type ) {
 		register_post_meta(
 			'banner-principal',
+			$key,
+			array(
+				'type'          => $type,
+				'single'        => true,
+				'show_in_rest'  => true,
+				'auth_callback' => static function () {
+					return current_user_can( 'edit_posts' );
+				},
+			)
+		);
+	}
+
+	foreach ( $sponsor_meta as $key => $type ) {
+		register_post_meta(
+			'liga_sponsor',
 			$key,
 			array(
 				'type'          => $type,
@@ -834,6 +863,40 @@ function liga_render_banner_principal_metabox( $post ) {
 }
 
 /**
+ * Render metabox sponsor.
+ *
+ * @param WP_Post $post Post actual.
+ * @return void
+ */
+function liga_render_sponsor_metabox( $post ) {
+	wp_nonce_field( 'liga_save_sponsor_meta', 'liga_sponsor_nonce' );
+
+	$fields = array(
+		'_liga_sponsor_url'    => get_post_meta( $post->ID, '_liga_sponsor_url', true ),
+		'_liga_sponsor_active' => get_post_meta( $post->ID, '_liga_sponsor_active', true ),
+	);
+
+	if ( '' === (string) $fields['_liga_sponsor_active'] ) {
+		$fields['_liga_sponsor_active'] = 1;
+	}
+	?>
+	<table class="form-table" role="presentation">
+		<tr>
+			<th><label for="liga_sponsor_url"><?php esc_html_e( 'URL del sponsor', 'liga-basket-chile' ); ?></label></th>
+			<td>
+				<input type="url" class="regular-text" id="liga_sponsor_url" name="liga_sponsor_url" value="<?php echo esc_attr( (string) $fields['_liga_sponsor_url'] ); ?>" placeholder="https://">
+				<p class="description"><?php esc_html_e( 'Usa una URL completa (por ejemplo, https://sponsor.cl).', 'liga-basket-chile' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Activo', 'liga-basket-chile' ); ?></th>
+			<td><label><input type="checkbox" name="liga_sponsor_active" value="1" <?php checked( (int) $fields['_liga_sponsor_active'], 1 ); ?>> <?php esc_html_e( 'Mostrar sponsor en el home', 'liga-basket-chile' ); ?></label></td>
+		</tr>
+	</table>
+	<?php
+}
+
+/**
  * Guarda metadatos del equipo.
  *
  * @param int $post_id ID del post.
@@ -1176,6 +1239,36 @@ function liga_save_banner_principal_meta( $post_id ) {
 	}
 }
 add_action( 'save_post_banner-principal', 'liga_save_banner_principal_meta' );
+
+/**
+ * Guarda metadatos de sponsor.
+ *
+ * @param int $post_id ID del post.
+ * @return void
+ */
+function liga_save_sponsor_meta( $post_id ) {
+	if ( ! isset( $_POST['liga_sponsor_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['liga_sponsor_nonce'] ) ), 'liga_save_sponsor_meta' ) ) {
+		return;
+	}
+
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		return;
+	}
+
+	$data = array(
+		'_liga_sponsor_url'    => isset( $_POST['liga_sponsor_url'] ) ? esc_url_raw( wp_unslash( $_POST['liga_sponsor_url'] ) ) : '',
+		'_liga_sponsor_active' => liga_sanitize_checkbox( isset( $_POST['liga_sponsor_active'] ) ? wp_unslash( $_POST['liga_sponsor_active'] ) : 0 ),
+	);
+
+	foreach ( $data as $key => $value ) {
+		update_post_meta( $post_id, $key, $value );
+	}
+}
+add_action( 'save_post_liga_sponsor', 'liga_save_sponsor_meta' );
 
 /**
  * Encola assets admin del selector de imagen en Banner Principal.
