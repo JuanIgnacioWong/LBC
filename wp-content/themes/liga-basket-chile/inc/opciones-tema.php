@@ -27,6 +27,8 @@ function liga_get_theme_option_fields() {
 		'hero_title'         => 'text',
 		'hero_subtitle'      => 'textarea',
 		'news_count'         => 'int',
+		'sponsors_section_title' => 'text',
+		'sponsors_cta_label' => 'text',
 		'footer_texto'       => 'textarea',
 		'contact_email'      => 'email',
 		'contact_phone'      => 'text',
@@ -149,10 +151,11 @@ add_action( 'admin_menu', 'liga_register_theme_options_page' );
  * @param string $key Clave.
  * @param string $label Etiqueta.
  * @param string $type Tipo.
+ * @param mixed  $default Valor por defecto.
  * @return void
  */
-function liga_render_option_field( $key, $label, $type = 'text' ) {
-	$value = liga_get_option( $key, '' );
+function liga_render_option_field( $key, $label, $type = 'text', $default = '' ) {
+	$value = liga_get_option( $key, $default );
 	$name  = 'liga_theme_options[' . $key . ']';
 	echo '<tr>';
 	echo '<th scope="row"><label for="' . esc_attr( $key ) . '">' . esc_html( $label ) . '</label></th>';
@@ -203,6 +206,8 @@ function liga_render_theme_options_page() {
 				<?php liga_render_option_field( 'hero_title', __( 'Hero titulo', 'liga-basket-chile' ) ); ?>
 				<?php liga_render_option_field( 'hero_subtitle', __( 'Hero subtitulo', 'liga-basket-chile' ), 'textarea' ); ?>
 				<?php liga_render_option_field( 'news_count', __( 'Cantidad noticias home', 'liga-basket-chile' ), 'number' ); ?>
+				<?php liga_render_option_field( 'sponsors_section_title', __( 'Titulo seccion participantes', 'liga-basket-chile' ), 'text', __( 'Participantes', 'liga-basket-chile' ) ); ?>
+				<?php liga_render_option_field( 'sponsors_cta_label', __( 'Texto enlace participantes', 'liga-basket-chile' ), 'text', __( 'Participar en la competición', 'liga-basket-chile' ) ); ?>
 			</table>
 
 			<h2><?php esc_html_e( 'Footer', 'liga-basket-chile' ); ?></h2>

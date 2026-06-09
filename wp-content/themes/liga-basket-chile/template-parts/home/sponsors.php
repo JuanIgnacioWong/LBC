@@ -10,12 +10,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $sponsors = function_exists( 'liga_get_home_sponsors' ) ? liga_get_home_sponsors( 12 ) : array();
+$section_title = trim( (string) liga_get_option( 'sponsors_section_title', __( 'Participantes', 'liga-basket-chile' ) ) );
+$section_title = '' !== $section_title ? $section_title : __( 'Participantes', 'liga-basket-chile' );
+$cta_label     = trim( (string) liga_get_option( 'sponsors_cta_label', __( 'Participar en la competición', 'liga-basket-chile' ) ) );
+$cta_label     = '' !== $cta_label ? $cta_label : __( 'Participar en la competición', 'liga-basket-chile' );
 ?>
 <section class="liga-sponsors" aria-labelledby="liga-sponsors-title">
 	<div class="liga-container">
 		<div class="liga-section-head">
-			<h2 class="liga-section-title" id="liga-sponsors-title"><?php esc_html_e( 'Patrocinadores', 'liga-basket-chile' ); ?></h2>
-			<a class="liga-section-link" href="<?php echo esc_url( home_url( '/sponsors' ) ); ?>"><?php esc_html_e( 'Quiero ser sponsor', 'liga-basket-chile' ); ?></a>
+			<h2 class="liga-section-title" id="liga-sponsors-title"><?php echo esc_html( $section_title ); ?></h2>
+			<a class="liga-section-link" href="<?php echo esc_url( home_url( '/sponsors' ) ); ?>"><?php echo esc_html( $cta_label ); ?></a>
 		</div>
 
 			<?php if ( ! empty( $sponsors ) ) : ?>
