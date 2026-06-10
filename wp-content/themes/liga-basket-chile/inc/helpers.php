@@ -25,18 +25,68 @@ function liga_get_option( $key, $default = '' ) {
 }
 
 /**
- * Obtiene opcion de tema priorizando `liga_theme_options` con fallback a `theme_mod`.
+ * Obtiene opcion de tema priorizando `liga_theme_options` con fallback legacy.
  *
  * @param string $key Clave de opcion.
  * @param mixed  $default Valor por defecto.
+ * @param string $section Seccion opcional para opciones estructuradas.
  * @return mixed
  */
-function liga_get_theme_option( $key, $default = '' ) {
+function liga_get_theme_option( $key, $default = '', $section = null ) {
 	$key     = sanitize_key( (string) $key );
+	$section = null !== $section ? sanitize_key( (string) $section ) : null;
 	$options = get_option( 'liga_theme_options', array() );
 
-	if ( is_array( $options ) && array_key_exists( $key, $options ) ) {
-		return $options[ $key ];
+	if ( is_array( $options ) ) {
+		if ( null !== $section && isset( $options[ $section ] ) && is_array( $options[ $section ] ) && array_key_exists( $key, $options[ $section ] ) ) {
+			return $options[ $section ][ $key ];
+		}
+
+		if ( array_key_exists( $key, $options ) ) {
+			return $options[ $key ];
+		}
+	}
+
+	$section_aliases = array(
+		'general' => array(
+			'site_name' => 'branding_nombre',
+			'slogan'    => 'header_slogan',
+		),
+		'header'  => array(
+			'logo_id'     => 'custom_logo',
+			'cta_text'    => 'header_cta_label',
+			'cta_url'     => 'header_cta_url',
+			'show_cta'    => 'header_login_enabled',
+			'topbar_text' => 'top_contact_label',
+		),
+		'home'    => array(
+			'featured_division' => 'featured_division',
+			'featured_season'   => 'current_season',
+			'news_limit'        => 'news_count',
+		),
+		'footer'  => array(
+			'logo_id'          => 'footer_logo_id',
+			'description'      => 'footer_brand_description',
+			'legal_text'       => 'footer_legal_extra_text',
+			'contact_email'    => 'footer_contact_email',
+			'contact_phone'    => 'footer_contact_phone',
+			'address'          => 'footer_contact_address_1',
+			'column_1_title'   => 'footer_brand_title',
+			'column_1_text'    => 'footer_brand_description',
+		),
+		'social'  => array(
+			'facebook'  => 'social_facebook',
+			'instagram' => 'social_instagram',
+			'youtube'   => 'social_youtube',
+			'tiktok'    => 'footer_social_tiktok',
+		),
+	);
+
+	if ( null !== $section && isset( $section_aliases[ $section ][ $key ] ) && is_array( $options ) ) {
+		$alias_key = $section_aliases[ $section ][ $key ];
+		if ( array_key_exists( $alias_key, $options ) ) {
+			return $options[ $alias_key ];
+		}
 	}
 
 	$legacy_option_fallback = array(
@@ -63,7 +113,12 @@ function liga_get_theme_option( $key, $default = '' ) {
 		'footer_contact_email'    => 'liga_contact_email',
 		'footer_contact_phone'    => 'liga_contact_phone',
 		'footer_logo_id'          => 'custom_logo',
+		'custom_logo'             => 'custom_logo',
 	);
+
+	if ( null !== $section && isset( $section_aliases[ $section ][ $key ] ) ) {
+		$key = $section_aliases[ $section ][ $key ];
+	}
 
 	if ( isset( $theme_mod_fallback[ $key ] ) ) {
 		$mod_key   = $theme_mod_fallback[ $key ];

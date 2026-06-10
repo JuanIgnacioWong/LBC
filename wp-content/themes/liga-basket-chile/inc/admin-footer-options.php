@@ -121,16 +121,36 @@ function liga_get_footer_admin_value( $key ) {
  * @return void
  */
 function liga_register_footer_admin_submenu() {
-	add_submenu_page(
-		'liga-basquet-dashboard',
-		__( 'Footer', 'liga-basket-chile' ),
-		__( 'Footer', 'liga-basket-chile' ),
-		'manage_options',
-		'liga-footer-options',
-		'liga_render_footer_options_page'
-	);
+	// Deprecated: Footer vive en Liga Basquet > Configuracion > Footer.
 }
-add_action( 'admin_menu', 'liga_register_footer_admin_submenu', 20 );
+
+/**
+ * Redirige el slug legacy de Footer hacia la pestaña unificada.
+ *
+ * @return void
+ */
+function liga_redirect_legacy_footer_options_page() {
+	if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+	if ( 'liga-footer-options' !== $page ) {
+		return;
+	}
+
+	wp_safe_redirect(
+		add_query_arg(
+			array(
+				'page' => 'liga-basquet-configuracion',
+				'tab'  => 'footer',
+			),
+			admin_url( 'admin.php' )
+		)
+	);
+	exit;
+}
+add_action( 'admin_init', 'liga_redirect_legacy_footer_options_page' );
 
 /**
  * Carga assets de media uploader solo en la pantalla Footer.
@@ -139,7 +159,10 @@ add_action( 'admin_menu', 'liga_register_footer_admin_submenu', 20 );
  * @return void
  */
 function liga_footer_admin_enqueue_assets( $hook ) {
-	if ( 'liga-basquet-dashboard_page_liga-footer-options' !== $hook ) {
+	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+	$tab  = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'general';
+
+	if ( 'liga-footer-options' !== $page && ( 'liga-basquet-configuracion' !== $page || 'footer' !== $tab ) ) {
 		return;
 	}
 
@@ -214,6 +237,7 @@ function liga_render_footer_admin_field( $field ) {
 	echo '<tr>';
 	echo '<th scope="row"><label for="' . esc_attr( $key ) . '">' . esc_html( $label ) . '</label></th>';
 	echo '<td>';
+	echo '<input type="hidden" name="liga_theme_options[_active_fields][]" value="' . esc_attr( $key ) . '">';
 
 	if ( 'textarea' === $type ) {
 		echo '<textarea class="large-text" rows="3" id="' . esc_attr( $key ) . '" name="' . esc_attr( $name ) . '">' . esc_textarea( (string) $value ) . '</textarea>';
@@ -259,27 +283,14 @@ function liga_render_footer_options_page() {
 		wp_die( esc_html__( 'No tienes permisos para acceder a esta pagina.', 'liga-basket-chile' ) );
 	}
 
-	$sections = liga_get_footer_admin_sections();
-	?>
-	<div class="wrap">
-		<h1><?php esc_html_e( 'Footer - Liga Basquet', 'liga-basket-chile' ); ?></h1>
-		<p><?php esc_html_e( 'Edita contenido y visibilidad del footer. Los menus se siguen gestionando en Apariencia > Menus.', 'liga-basket-chile' ); ?></p>
-		<form method="post" action="options.php">
-			<?php settings_fields( 'liga_theme_options_group' ); ?>
-			<?php foreach ( $sections as $section ) : ?>
-				<h2><?php echo esc_html( (string) $section['title'] ); ?></h2>
-				<table class="form-table" role="presentation">
-					<?php
-					if ( ! empty( $section['fields'] ) && is_array( $section['fields'] ) ) {
-						foreach ( $section['fields'] as $field ) {
-							liga_render_footer_admin_field( $field );
-						}
-					}
-					?>
-				</table>
-			<?php endforeach; ?>
-			<?php submit_button( __( 'Guardar footer', 'liga-basket-chile' ) ); ?>
-		</form>
-	</div>
-	<?php
+	wp_safe_redirect(
+		add_query_arg(
+			array(
+				'page' => 'liga-basquet-configuracion',
+				'tab'  => 'footer',
+			),
+			admin_url( 'admin.php' )
+		)
+	);
+	exit;
 }
