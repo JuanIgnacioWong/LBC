@@ -147,7 +147,7 @@ $results_posts = get_posts(
 	array(
 		'post_type'      => 'partido',
 		'post_status'    => 'publish',
-		'posts_per_page' => 3,
+		'posts_per_page' => 4,
 		'meta_key'       => 'liga_fecha_partido',
 		'orderby'        => 'meta_value',
 		'order'          => 'DESC',
