@@ -192,22 +192,7 @@ foreach ( $results_posts as $result_post ) {
 	);
 }
 
-$fixtures_posts = get_posts(
-	array(
-		'post_type'      => 'partido',
-		'post_status'    => 'publish',
-		'posts_per_page' => 3,
-		'meta_key'       => 'liga_fecha_partido',
-		'orderby'        => 'meta_value',
-		'order'          => 'ASC',
-		'meta_query'     => array(
-			array(
-				'key'   => 'liga_estado_partido',
-				'value' => 'programado',
-			),
-		),
-	)
-);
+$fixtures_posts = function_exists( 'liga_get_upcoming_match_posts' ) ? liga_get_upcoming_match_posts( 3 ) : array();
 
 $fixtures = array();
 
@@ -215,9 +200,9 @@ foreach ( $fixtures_posts as $fixture_post ) {
 	$local_id    = (int) get_post_meta( $fixture_post->ID, 'liga_equipo_local', true );
 	$visita_id   = (int) get_post_meta( $fixture_post->ID, 'liga_equipo_visita', true );
 	$division_id = (int) get_post_meta( $fixture_post->ID, 'liga_division', true );
-	$raw_date    = (string) get_post_meta( $fixture_post->ID, 'liga_fecha_partido', true );
-	$raw_time    = (string) get_post_meta( $fixture_post->ID, 'liga_hora_partido', true );
-	$venue       = trim( (string) get_post_meta( $fixture_post->ID, 'liga_cancha', true ) );
+	$raw_date    = function_exists( 'liga_get_match_date' ) ? liga_get_match_date( $fixture_post->ID ) : (string) get_post_meta( $fixture_post->ID, 'liga_fecha_partido', true );
+	$raw_time    = function_exists( 'liga_get_match_time' ) ? liga_get_match_time( $fixture_post->ID ) : (string) get_post_meta( $fixture_post->ID, 'liga_hora_partido', true );
+	$venue       = function_exists( 'liga_get_match_venue' ) ? liga_get_match_venue( $fixture_post->ID ) : trim( (string) get_post_meta( $fixture_post->ID, 'liga_cancha', true ) );
 
 	if ( $local_id <= 0 || $visita_id <= 0 || $local_id === $visita_id ) {
 		continue;
@@ -229,8 +214,9 @@ foreach ( $fixtures_posts as $fixture_post ) {
 	$fixtures[] = array(
 		'division'  => $get_division_label( $division_id ),
 		'date'      => $format_datetime_attribute( $raw_date ),
-		'date_h'    => $format_date( $raw_date, 'D d M Y' ),
-		'time'      => $format_time( $raw_time ),
+		'date_h'    => function_exists( 'liga_format_match_date_label' ) ? liga_format_match_date_label( $raw_date ) : $format_date( $raw_date, 'D d M Y' ),
+		'time'      => function_exists( 'liga_format_match_time_label' ) ? liga_format_match_time_label( $raw_time ) : $format_time( $raw_time ),
+		'has_time'  => '' !== $raw_time,
 		'datetime'  => $format_datetime_attribute( $raw_date, $raw_time ),
 		'home_id'   => $home_team['id'],
 		'home'      => $home_team['name'],
@@ -406,7 +392,13 @@ if ( '' === $standings_link ) {
 									<time class="liga-fixture-date" datetime="<?php echo esc_attr( $fixture['date'] ); ?>"><?php echo esc_html( $fixture['date_h'] ); ?></time>
 								</header>
 								<div class="liga-fixture-body">
-									<p class="liga-fixture-time"><time datetime="<?php echo esc_attr( $fixture['datetime'] ); ?>"><?php echo esc_html( $fixture['time'] ); ?> HRS</time></p>
+									<p class="liga-fixture-time">
+										<?php if ( ! empty( $fixture['has_time'] ) ) : ?>
+											<time datetime="<?php echo esc_attr( $fixture['datetime'] ); ?>"><?php echo esc_html( $fixture['time'] ); ?></time>
+										<?php else : ?>
+											<span><?php echo esc_html( $fixture['time'] ); ?></span>
+										<?php endif; ?>
+									</p>
 									<div class="liga-fixture-teams">
 										<figure class="liga-fixture-team-logo">
 											<?php echo wp_kses_post( liga_get_team_logo_html( $fixture['home_id'], array( 'class' => 'liga-team-logo liga-fixture-team-logo__image', 'size' => 'thumbnail' ) ) ); ?>

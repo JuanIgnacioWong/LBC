@@ -30,23 +30,7 @@ if ( $limit <= 0 ) {
 	$limit = 5;
 }
 
-$fixtures_query = new WP_Query(
-	array(
-		'post_type'      => 'partido',
-		'post_status'    => 'publish',
-		'posts_per_page' => $limit,
-		'meta_key'       => 'liga_fecha_partido',
-		'orderby'        => 'meta_value',
-		'order'          => 'ASC',
-		'no_found_rows'  => true,
-		'meta_query'     => array(
-			array(
-				'key'   => 'liga_estado_partido',
-				'value' => 'programado',
-			),
-		),
-	)
-);
+$fixtures_posts = function_exists( 'liga_get_upcoming_match_posts' ) ? liga_get_upcoming_match_posts( $limit ) : array();
 
 $get_match_timestamp = static function ( $raw_date, $raw_time = '' ) {
 	$date = trim( (string) $raw_date );
@@ -65,7 +49,7 @@ $get_match_timestamp = static function ( $raw_date, $raw_time = '' ) {
 $format_match_date = static function ( $raw_date ) use ( $get_match_timestamp ) {
 	$timestamp = $get_match_timestamp( $raw_date );
 	if ( $timestamp > 0 ) {
-		return wp_date( 'D d M Y', $timestamp );
+		return wp_date( 'j \d\e F \d\e Y', $timestamp );
 	}
 
 	return sanitize_text_field( (string) $raw_date );
@@ -105,22 +89,23 @@ $widget_title_id = wp_unique_id( 'liga-fixture-widget-title-' );
 	</div>
 
 	<ul class="liga-fixture-list">
-		<?php if ( $fixtures_query->have_posts() ) : ?>
-			<?php while ( $fixtures_query->have_posts() ) : ?>
+		<?php if ( ! empty( $fixtures_posts ) ) : ?>
+			<?php foreach ( $fixtures_posts as $fixture_post ) : ?>
 				<?php
-				$fixtures_query->the_post();
-				$match_id       = get_the_ID();
+				$match_id       = (int) $fixture_post->ID;
 				$local_id       = (int) get_post_meta( $match_id, 'liga_equipo_local', true );
 				$visita_id      = (int) get_post_meta( $match_id, 'liga_equipo_visita', true );
 				$division_id    = (int) get_post_meta( $match_id, 'liga_division', true );
-				$raw_date       = (string) get_post_meta( $match_id, 'liga_fecha_partido', true );
-				$raw_time       = (string) get_post_meta( $match_id, 'liga_hora_partido', true );
-				$venue          = trim( (string) get_post_meta( $match_id, 'liga_cancha', true ) );
+				$raw_date       = function_exists( 'liga_get_match_date' ) ? liga_get_match_date( $match_id ) : (string) get_post_meta( $match_id, 'liga_fecha_partido', true );
+				$raw_time       = function_exists( 'liga_get_match_time' ) ? liga_get_match_time( $match_id ) : (string) get_post_meta( $match_id, 'liga_hora_partido', true );
+				$venue          = function_exists( 'liga_get_match_venue' ) ? liga_get_match_venue( $match_id ) : trim( (string) get_post_meta( $match_id, 'liga_cancha', true ) );
 				$local_name     = $local_id > 0 ? get_the_title( $local_id ) : '';
 				$visita_name    = $visita_id > 0 ? get_the_title( $visita_id ) : '';
 				$division_name  = $division_id > 0 ? get_the_title( $division_id ) : '';
 				$match_datetime = $format_datetime_attribute( $raw_date, $raw_time );
-				$match_time     = $format_match_time( $raw_time );
+				$match_time     = function_exists( 'liga_format_match_time_label' ) ? liga_format_match_time_label( $raw_time ) : $format_match_time( $raw_time );
+				$match_date     = function_exists( 'liga_format_match_date_label' ) ? liga_format_match_date_label( $raw_date ) : $format_match_date( $raw_date );
+				$has_time       = '' !== $raw_time;
 
 				$local_name    = '' !== $local_name ? $local_name : __( 'Local', 'liga-basket-chile' );
 				$visita_name   = '' !== $visita_name ? $visita_name : __( 'Visita', 'liga-basket-chile' );
@@ -131,12 +116,16 @@ $widget_title_id = wp_unique_id( 'liga-fixture-widget-title-' );
 					<article class="liga-card liga-fixture-card">
 						<header class="liga-fixture-head">
 							<span class="liga-fixture-division"><?php echo esc_html( $division_name ); ?></span>
-							<time class="liga-fixture-date"><?php echo esc_html( $format_match_date( $raw_date ) ); ?></time>
+							<time class="liga-fixture-date" datetime="<?php echo esc_attr( $format_datetime_attribute( $raw_date ) ); ?>"><?php echo esc_html( $match_date ); ?></time>
 						</header>
 						<div class="liga-fixture-body">
-							<?php if ( '' !== $match_time ) : ?>
-								<p class="liga-fixture-time"><time datetime="<?php echo esc_attr( $match_datetime ); ?>"><?php echo esc_html( $match_time ); ?> HRS</time></p>
-							<?php endif; ?>
+							<p class="liga-fixture-time">
+								<?php if ( $has_time ) : ?>
+									<time datetime="<?php echo esc_attr( $match_datetime ); ?>"><?php echo esc_html( $match_time ); ?></time>
+								<?php else : ?>
+									<span><?php echo esc_html( $match_time ); ?></span>
+								<?php endif; ?>
+							</p>
 							<div class="liga-fixture-teams">
 								<figure class="liga-fixture-team-logo"><?php echo wp_kses_post( liga_get_team_logo_html( $local_id, array( 'class' => 'liga-team-logo liga-fixture-team-logo__image', 'size' => 'thumbnail' ) ) ); ?></figure>
 								<p class="liga-fixture-team-name"><?php echo esc_html( $local_name ); ?></p>
@@ -148,7 +137,7 @@ $widget_title_id = wp_unique_id( 'liga-fixture-widget-title-' );
 						</div>
 					</article>
 				</li>
-			<?php endwhile; ?>
+			<?php endforeach; ?>
 		<?php else : ?>
 			<li class="liga-fixture-item">
 				<p><?php echo esc_html( $widget_args['empty_message'] ); ?></p>
@@ -156,4 +145,3 @@ $widget_title_id = wp_unique_id( 'liga-fixture-widget-title-' );
 		<?php endif; ?>
 	</ul>
 </section>
-<?php wp_reset_postdata(); ?>

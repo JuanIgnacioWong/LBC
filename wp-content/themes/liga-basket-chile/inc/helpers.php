@@ -233,6 +233,182 @@ function liga_get_equipo_nombre( $equipo_id ) {
 }
 
 /**
+ * Obtiene la fecha normalizada de un partido.
+ *
+ * @param int $match_id ID del partido.
+ * @return string Fecha en formato Y-m-d o cadena vacia.
+ */
+function liga_get_match_date( $match_id ) {
+	$value = liga_get_first_match_meta_value(
+		$match_id,
+		array(
+			'liga_fecha_partido',
+			'fecha_partido',
+			'_fecha_partido',
+		)
+	);
+
+	if ( '' === $value ) {
+		return '';
+	}
+
+	if ( 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ) {
+		return $value;
+	}
+
+	$timestamp = strtotime( $value );
+	if ( false === $timestamp ) {
+		return '';
+	}
+
+	return wp_date( 'Y-m-d', (int) $timestamp );
+}
+
+/**
+ * Obtiene la hora normalizada de un partido.
+ *
+ * @param int $match_id ID del partido.
+ * @return string Hora en formato H:i o cadena vacia.
+ */
+function liga_get_match_time( $match_id ) {
+	$value = liga_get_first_match_meta_value(
+		$match_id,
+		array(
+			'liga_hora_partido',
+			'hora_partido',
+			'_hora_partido',
+		)
+	);
+
+	if ( '' === $value ) {
+		return '';
+	}
+
+	if ( 1 === preg_match( '/^\d{2}:\d{2}$/', $value ) ) {
+		return $value;
+	}
+
+	$timestamp = strtotime( $value );
+	if ( false === $timestamp ) {
+		return '';
+	}
+
+	return wp_date( 'H:i', (int) $timestamp );
+}
+
+/**
+ * Obtiene el recinto/cancha de un partido.
+ *
+ * @param int $match_id ID del partido.
+ * @return string
+ */
+function liga_get_match_venue( $match_id ) {
+	return liga_get_first_match_meta_value(
+		$match_id,
+		array(
+			'liga_cancha',
+			'cancha',
+			'recinto',
+			'lugar',
+		)
+	);
+}
+
+/**
+ * Formatea la fecha de partido para frontend.
+ *
+ * @param string $match_date Fecha Y-m-d.
+ * @return string
+ */
+function liga_format_match_date_label( $match_date ) {
+	$timestamp = strtotime( (string) $match_date );
+	if ( false === $timestamp ) {
+		return __( 'Fecha por confirmar', 'liga-basket-chile' );
+	}
+
+	return wp_date( 'j \d\e F \d\e Y', (int) $timestamp );
+}
+
+/**
+ * Formatea la hora de partido para frontend.
+ *
+ * @param string $match_time Hora H:i.
+ * @return string
+ */
+function liga_format_match_time_label( $match_time ) {
+	$match_time = trim( (string) $match_time );
+	if ( '' === $match_time ) {
+		return __( 'Horario por confirmar', 'liga-basket-chile' );
+	}
+
+	return sprintf(
+		/* translators: %s: match time in HH:mm format. */
+		__( '%s hrs', 'liga-basket-chile' ),
+		$match_time
+	);
+}
+
+/**
+ * Obtiene partidos programados ordenados por fecha y hora reales.
+ *
+ * @param int $limit Cantidad maxima de partidos.
+ * @return array<int, WP_Post>
+ */
+function liga_get_upcoming_match_posts( $limit = 5 ) {
+	$limit = absint( $limit );
+	if ( $limit <= 0 ) {
+		$limit = 5;
+	}
+
+	$posts = get_posts(
+		array(
+			'post_type'      => 'partido',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'meta_query'     => array(
+				array(
+					'key'   => 'liga_estado_partido',
+					'value' => 'programado',
+				),
+			),
+		)
+	);
+
+	$today = current_time( 'Y-m-d' );
+	usort(
+		$posts,
+		static function ( $left, $right ) use ( $today ) {
+			$left_date  = liga_get_match_date( $left->ID );
+			$right_date = liga_get_match_date( $right->ID );
+			$left_rank  = '' === $left_date ? 2 : ( $left_date >= $today ? 0 : 1 );
+			$right_rank = '' === $right_date ? 2 : ( $right_date >= $today ? 0 : 1 );
+
+			if ( $left_rank !== $right_rank ) {
+				return $left_rank <=> $right_rank;
+			}
+
+			if ( $left_date !== $right_date ) {
+				return strcmp( $left_date, $right_date );
+			}
+
+			$left_time  = liga_get_match_time( $left->ID );
+			$right_time = liga_get_match_time( $right->ID );
+			$left_sort  = '' !== $left_time ? $left_time : '99:99';
+			$right_sort = '' !== $right_time ? $right_time : '99:99';
+
+			if ( $left_sort !== $right_sort ) {
+				return strcmp( $left_sort, $right_sort );
+			}
+
+			return $left->ID <=> $right->ID;
+		}
+	);
+
+	return array_slice( $posts, 0, $limit );
+}
+
+/**
  * Construye iniciales legibles para fallback visual de equipo.
  *
  * @param string $team_name Nombre del equipo.
