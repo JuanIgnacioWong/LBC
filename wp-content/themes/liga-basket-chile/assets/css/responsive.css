@@ -1,18 +1,35 @@
 /* Home responsive add-on layer (mobile-first + performance friendly) */
 
 /* Base safeguards: overflow, viewport fit and reveal helper */
+html,
 .liga-body {
+  max-width: 100%;
   overflow-x: hidden;
 }
 
 .liga-container,
 .liga-home,
 .liga-home .liga-grid > *,
-.liga-hero-layout > * {
+.liga-hero-layout > *,
+.liga-card,
+.liga-section-head,
+.liga-header-inner,
+.liga-footer-grid > *,
+.liga-single-post__layout > *,
+.liga-match-single__layout > *,
+.liga-news-archive__layout > *,
+.liga-standings-page__layout > * {
   min-width: 0;
 }
 
+.liga-body svg,
+.liga-body video,
+.liga-body canvas {
+  max-width: 100%;
+}
+
 .liga-table-wrap {
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -186,11 +203,13 @@
 
   .liga-header-nav {
     position: absolute;
+    grid-column: 1 / -1;
     top: calc(100% + 0.45rem);
     left: 0;
     right: 0;
     z-index: 80;
     display: none;
+    width: 100%;
     max-height: calc(100vh - 7rem);
     overflow: auto;
     padding: 0.65rem;
@@ -198,6 +217,7 @@
     border: 1px solid rgba(255, 255, 255, 0.16);
     background: rgba(5, 10, 24, 0.98);
     box-shadow: var(--liga-shadow-md);
+    justify-self: stretch;
   }
 
   .liga-header-nav.liga-nav-open {
@@ -344,6 +364,20 @@
     padding-block: 2rem;
   }
 
+  .liga-topbar {
+    display: none;
+  }
+
+  .liga-section-head {
+    flex-wrap: wrap;
+  }
+
+  .liga-section-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+  }
+
   .liga-topbar-inner {
     row-gap: 0.35rem;
     min-height: auto;
@@ -390,6 +424,10 @@
     padding-top: 1.1rem;
   }
 
+  .liga-hero-content.liga-hero-layout__content {
+    padding: 1.25rem;
+  }
+
   .liga-hero-title {
     font-size: clamp(1.9rem, 10vw, 3.2rem);
   }
@@ -424,6 +462,32 @@
 
   .liga-home-main-panels-grid {
     grid-template-columns: 1fr;
+  }
+
+  .liga-division-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.1rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .liga-division-tab {
+    flex: 0 0 auto;
+  }
+
+  .liga-standings-table {
+    min-width: 620px;
+  }
+
+  .liga-standings-table th,
+  .liga-standings-table td {
+    white-space: nowrap;
+  }
+
+  .liga-standings-table td:nth-child(3),
+  .liga-standings-page .liga-standings-table td:nth-child(2) {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .liga-partidos-archive__scoreboard {
@@ -578,6 +642,19 @@
     padding: 0.68rem;
   }
 
+  .liga-result-head,
+  .liga-fixture-head {
+    align-items: flex-start;
+  }
+
+  .liga-result-division,
+  .liga-result-date,
+  .liga-fixture-division,
+  .liga-fixture-date,
+  .liga-fixture-venue {
+    overflow-wrap: anywhere;
+  }
+
   .liga-result-team-logo {
     width: 36px;
     height: 36px;
@@ -593,6 +670,21 @@
     font-size: clamp(1.3rem, 6.5vw, 1.7rem);
   }
 
+  .liga-result-body {
+    grid-template-columns: minmax(34px, 1fr) auto minmax(34px, 1fr);
+  }
+
+  .liga-result-score {
+    flex-shrink: 0;
+  }
+
+  .liga-fixture-team-name,
+  .liga-partidos-archive__team-name,
+  .liga-match-team__name {
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+
   .liga-news-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -606,7 +698,13 @@
 
   .liga-sponsors-item {
     flex-basis: calc((100% - 0.72rem - (var(--liga-sponsors-edge-space, 3rem) * 2)) / 2);
+    min-width: 0;
     min-height: 90px;
+  }
+
+  .liga-sponsors-logo {
+    max-width: 100%;
+    object-fit: contain;
   }
 
   .liga-footer-grid {
@@ -619,6 +717,12 @@
     flex-wrap: wrap;
     padding-block: 0.7rem;
   }
+
+  .liga-footer-legal-copy,
+  .liga-footer-legal-extra,
+  .liga-footer-contact-link {
+    overflow-wrap: anywhere;
+  }
 }
 
 /* ------------------------------ */
@@ -626,7 +730,7 @@
 /* ------------------------------ */
 @media (max-width: 576px) {
   .liga-container {
-    width: calc(100% - 1rem);
+    width: min(100% - 1.25rem, var(--liga-container-max, 1200px));
   }
 
   .liga-card.liga-partidos-archive__item {
@@ -865,12 +969,12 @@
     padding: 0.5rem 0.42rem;
   }
 
-  /* Hide secondary columns on narrow screens: PP + INC */
+  /* Mantener datos deportivos completos; el scroll vive en .liga-table-wrap. */
   .liga-standings-table th:nth-child(6),
   .liga-standings-table td:nth-child(6),
   .liga-standings-table th:nth-child(7),
   .liga-standings-table td:nth-child(7) {
-    display: none;
+    display: table-cell;
   }
 
   .liga-standings-page .liga-standings-table {
