@@ -3614,3 +3614,23 @@ body.liga-body {
   border-color: rgba(11, 42, 102, 0.22);
   box-shadow: 0 10px 24px rgba(4, 10, 24, 0.14);
 }
+
+/* SWISH POPUP — NO MODIFICAR */
+@keyframes swishPopupIn {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+@keyframes swishLiveBlink {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.3; }
+}
+#swish-live-dot {
+  animation: swishLiveBlink 1.2s ease-in-out infinite;
+}
+#swish-popup-overlay {
+  display: none;
+}
+#swish-popup-overlay.is-visible {
+  display: flex;
+}
+/* /SWISH POPUP — NO MODIFICAR */
