@@ -129,6 +129,26 @@ function liga_enqueue_assets() {
 add_action( 'wp_enqueue_scripts', 'liga_enqueue_assets' );
 
 /**
+ * Registra y carga el controlador por defecto del pop-up Swish.
+ *
+ * @return void
+ */
+function liga_enqueue_swish_popup_script() {
+	wp_register_script(
+		'swish-popup',
+		get_template_directory_uri() . '/assets/js/popup.js',
+		array(),
+		'1.0.0',
+		true
+	);
+
+	if ( function_exists( 'liga_should_enqueue_default_popup_script' ) && liga_should_enqueue_default_popup_script() ) {
+		wp_enqueue_script( 'swish-popup' );
+	}
+}
+add_action( 'wp_enqueue_scripts', 'liga_enqueue_swish_popup_script' );
+
+/**
  * SVG placeholder URI helper for fallback images.
  *
  * @param string $label Text label.
@@ -390,9 +410,11 @@ function liga_bootstrap_inc_modules() {
 			'inc/enqueue-assets.php',
 			'inc/taxonomias.php',
 			'inc/cpt-registro.php',
+			'inc/cpt-popup.php',
 			'inc/metaboxes.php',
 			'inc/tabla-logica.php',
 			'inc/public-standings.php',
+			'inc/popup-render.php',
 			'inc/opciones-tema.php',
 			'inc/admin-footer-options.php',
 			'inc/admin-tabla.php',
